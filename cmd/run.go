@@ -17,13 +17,16 @@ import (
 // runCmd represents the run command
 var runCmd = &cobra.Command{
 	Use:   "run",
-	Short: "Create an exit node",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Create an exit node in your tailnet",
+	Long: `Create an exit node in your tailnet.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+This command will create an EC2 instance in the targeted region with the following configuration:
+- Amazon Linux 2 AMI
+- t3a.micro instance type
+- Tailscale installed and configured to advertise as an exit node
+- SSH access enabled
+- Tagged with App=xit
+- The instance will be created as a spot instance in the default VPC`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Set up AWS session in the desired region
 		tsAuthKey := viper.GetString("ts_auth_key")
@@ -83,7 +86,7 @@ sudo sysctl -p /etc/sysctl.conf
 export INSTANCE_ID=$(curl http://169.254.169.254/latest/meta-data/instance-id)
 
 curl -fsSL https://tailscale.com/install.sh | sh
-sudo tailscale up --authkey=` + tsAuthKey + ` --hostname=xit-` + region + `-$(INSTANCE_ID) --advertise-exit-node --ssh`
+sudo tailscale up --authkey=` + tsAuthKey + ` --hostname=xit-` + region + `-$INSTANCE_ID --advertise-exit-node --ssh`
 
 		// Encode the string in base64
 		userDataScriptBase64 := base64.StdEncoding.EncodeToString([]byte(userDataScript))
@@ -103,8 +106,6 @@ sudo tailscale up --authkey=` + tsAuthKey + ` --hostname=xit-` + region + `-$(IN
 				},
 			},
 		}
-
-		fmt.Printf("Instance to be created in region %s: %v \n", region, runInput)
 
 		// Run the EC2 instance
 		runResult, err := svc.RunInstances(runInput)
@@ -138,11 +139,28 @@ sudo tailscale up --authkey=` + tsAuthKey + ` --hostname=xit-` + region + `-$(IN
 			fmt.Println("Failed to add tags to the instance:", err)
 			return
 		}
+
+		machineName := fmt.Sprintf("xit-%s-%s", region, *createdInstance.InstanceId)
+
+		fmt.Printf(`You will be able to use this insance as an exit node within a few minutes with the following command:
+
+sudo tailscale up --exit-node=%s
+
+You will may have to add other parameters to your command depending on your configuration.
+If you use a mobile client, you will be able to use it in a few minutes.
+`, machineName)
 	},
 }
 
 func init() {
+	cobra.OnInitialize(InitConfig)
+
 	rootCmd.AddCommand(runCmd)
+
+	runCmd.PersistentFlags().StringP("ts-auth-key", "", "", "TailScale Auth Key")
+	runCmd.PersistentFlags().StringP("region", "", "", "AWS Region to create the instance into")
+	viper.BindPFlag("ts_auth_key", runCmd.PersistentFlags().Lookup("ts-auth-key"))
+	viper.BindPFlag("region", runCmd.PersistentFlags().Lookup("region"))
 
 	// Here you will define your flags and configuration settings.
 

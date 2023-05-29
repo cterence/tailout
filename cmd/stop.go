@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"regexp"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -13,16 +14,19 @@ import (
 	"github.com/spf13/viper"
 )
 
+var (
+	Machine string
+)
+
 // stopCmd represents the stop command
 var stopCmd = &cobra.Command{
 	Use:   "stop",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Terminates instances created by xit",
+	Long: `By default, terminates all instances created by xit. 
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+If the --machine flag is provided, only the specified instance will be terminated.
+
+Example : xit stop --machine xit-eu-west-3-i-048afd4880f66c596`,
 	Run: func(cmd *cobra.Command, args []string) {
 		region := viper.GetString("region")
 		dryRun := viper.GetBool("dry_run")
@@ -53,9 +57,23 @@ to quickly create a Cobra application.`,
 			Values: []*string{aws.String("running")},
 		}
 
+		instanceFilter := &ec2.Filter{}
+		if Machine != "" {
+			// extract the instance ID from the machine name with a regex
+			instanceID := regexp.MustCompile(`i\-[a-z0-9]{17}$`).FindString(Machine)
+			if instanceID == "" {
+				fmt.Println("Failed to extract instance ID from machine name")
+				return
+			}
+			instanceFilter = &ec2.Filter{
+				Name:   aws.String("instance-id"),
+				Values: []*string{aws.String(instanceID)},
+			}
+		}
+
 		// DescribeInstances to get the instances with the specified tag
 		instancesOutput, err := svc.DescribeInstances(&ec2.DescribeInstancesInput{
-			Filters: []*ec2.Filter{tagFilter, statusFilter},
+			Filters: []*ec2.Filter{tagFilter, statusFilter, instanceFilter},
 		})
 		if err != nil {
 			fmt.Println("Failed to describe instances:", err)
@@ -71,7 +89,7 @@ to quickly create a Cobra application.`,
 		}
 
 		if instanceIDs == nil {
-			fmt.Println("No running instances with tag App=xit found.")
+			fmt.Println("No running instances found.")
 			return
 		}
 
@@ -90,7 +108,7 @@ to quickly create a Cobra application.`,
 			return
 		}
 
-		fmt.Printf("Instances with tag App=xit terminated successfully: %+v", instanceIDList)
+		fmt.Printf("Instances with tag App=xit terminated successfully: %v\n", instanceIDList)
 	},
 }
 
@@ -102,6 +120,9 @@ func init() {
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
 	// stopCmd.PersistentFlags().String("foo", "", "A help for foo")
+	stopCmd.Flags().StringP("region", "", "", "AWS Region to create the instance into")
+	stopCmd.Flags().StringVarP(&Machine, "machine", "m", "", "Machine to stop")
+	viper.BindPFlag("region", stopCmd.PersistentFlags().Lookup("region"))
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:

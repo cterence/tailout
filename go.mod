@@ -1,4 +1,4 @@
-module xit
+module github.com/cterence/xit
 
 go 1.20
 

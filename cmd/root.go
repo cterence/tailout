@@ -41,7 +41,7 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
+	cobra.OnInitialize(InitConfig)
 	// Find home directory.
 
 	// Here you will define your flags and configuration settings.
@@ -49,24 +49,12 @@ func init() {
 	// will be global for your application.
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.xit.yaml)")
-	rootCmd.PersistentFlags().StringP("ts-api-key", "", "", "TailScale API Key")
-	rootCmd.PersistentFlags().StringP("ts-auth-key", "", "", "TailScale Auth Key")
-	rootCmd.PersistentFlags().StringP("ts-tailnet", "", "", "TailScale Tailnet")
-	rootCmd.PersistentFlags().StringP("region", "", "", "AWS Region to create the instance into")
 	rootCmd.PersistentFlags().BoolP("dry-run", "", false, "Dry run the command")
 
-	viper.BindPFlag("ts_api_key", rootCmd.PersistentFlags().Lookup("ts-api-key"))
-	viper.BindPFlag("ts_auth_key", rootCmd.PersistentFlags().Lookup("ts-auth-key"))
-	viper.BindPFlag("ts_tailnet", rootCmd.PersistentFlags().Lookup("ts-tailnet"))
-	viper.BindPFlag("region", rootCmd.PersistentFlags().Lookup("region"))
 	viper.BindPFlag("dry_run", rootCmd.PersistentFlags().Lookup("dry-run"))
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
-func initConfig() {
+func InitConfig() {
 	if cfgFile != "" {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
@@ -82,7 +70,9 @@ func initConfig() {
 	}
 
 	viper.AutomaticEnv()
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	err := viper.ReadInConfig()
+	if err != nil {
+		fmt.Println("Failed to read config:", err)
+		return
 	}
 }

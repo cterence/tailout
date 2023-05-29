@@ -167,18 +167,17 @@ func updateACL(tsApiKey, baseURL, tailnet string, config Configuration) error {
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Initialize tailnet for xit",
+	Long: `This command will initialize your tailnet for xit.
+	
+In details it will:
+- add a tag:xit to your ACL
+- update autoapprovers to allow exit nodes to be created
+- add a ssh configuration allowing users to ssh into tagged xit machines`,
 	Run: func(cmd *cobra.Command, args []string) {
 		tsApiKey := viper.GetString("ts_api_key")
 		tailnet := viper.GetString("ts_tailnet")
-
-		fmt.Println("This command will add a tag:xit to your ACL and update autoapprovers to allow exit nodes to be created.")
+		dryRun := viper.GetBool("dry_run")
 
 		baseURL := "https://api.tailscale.com"
 
@@ -208,6 +207,25 @@ to quickly create a Cobra application.`,
 		config.AutoApprovers.ExitNode = []string{"tag:xit"}
 		// TODO: find how to add a ssh configuration allowing users to ssh into tagged xit machines
 
+		allowXitSSH := SSHConfiguration{
+			Action: "check",
+			Src:    []string{"autogroup:members"},
+			Dst:    []string{"tag:xit"},
+			Users:  []string{"autogroup:nonroot", "root"},
+		}
+
+		xitSSHConfigExists := false
+
+		for _, sshConfig := range config.SSH {
+			if sshConfig.Action == "check" && sshConfig.Src[0] == "autogroup:members" && sshConfig.Dst[0] == "tag:xit" && sshConfig.Users[0] == "autogroup:nonroot" && sshConfig.Users[1] == "root" {
+				xitSSHConfigExists = true
+			}
+		}
+
+		if !xitSSHConfigExists {
+			config.SSH = append(config.SSH, allowXitSSH)
+		}
+
 		// Validate the updated ACL configuration
 		err = validateACL(tsApiKey, baseURL, tailnet, config)
 		if err != nil {
@@ -216,16 +234,26 @@ to quickly create a Cobra application.`,
 		}
 
 		// Update the ACL configuration
-		err = updateACL(tsApiKey, baseURL, tailnet, config)
-		if err != nil {
-			fmt.Println("Failed to update ACL:", err)
-			return
+		if !dryRun {
+			err = updateACL(tsApiKey, baseURL, tailnet, config)
+			if err != nil {
+				fmt.Println("Failed to update ACL:", err)
+				return
+			}
 		}
 	},
 }
 
 func init() {
+	cobra.OnInitialize(InitConfig)
+
 	rootCmd.AddCommand(initCmd)
+
+	initCmd.PersistentFlags().StringP("ts-api-key", "", "", "TailScale API Key")
+	initCmd.PersistentFlags().StringP("ts-tailnet", "", "", "TailScale Tailnet")
+
+	viper.BindPFlag("ts_api_key", initCmd.PersistentFlags().Lookup("ts-api-key"))
+	viper.BindPFlag("ts_tailnet", initCmd.PersistentFlags().Lookup("ts-tailnet"))
 
 	// Here you will define your flags and configuration settings.
 
