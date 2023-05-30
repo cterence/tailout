@@ -6,6 +6,7 @@ package cmd
 import (
 	"encoding/base64"
 	"fmt"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -32,6 +33,19 @@ This command will create an EC2 instance in the targeted region with the followi
 		tsAuthKey := viper.GetString("ts_auth_key")
 		region := viper.GetString("region")
 		dryRun := viper.GetBool("dry_run")
+		shutdown := viper.GetString("shutdown")
+
+		duration, err := time.ParseDuration(shutdown)
+		if err != nil {
+			fmt.Println("Failed to parse duration:", err)
+			return
+		}
+
+		durationMinutes := int(duration.Minutes())
+		if durationMinutes < 1 {
+			fmt.Println("Duration must be at least 1 minute")
+			return
+		}
 
 		sess, err := session.NewSession(&aws.Config{
 			Region: aws.String(region),
@@ -86,7 +100,8 @@ sudo sysctl -p /etc/sysctl.conf
 export INSTANCE_ID=$(curl http://169.254.169.254/latest/meta-data/instance-id)
 
 curl -fsSL https://tailscale.com/install.sh | sh
-sudo tailscale up --authkey=` + tsAuthKey + ` --hostname=xit-` + region + `-$INSTANCE_ID --advertise-exit-node --ssh`
+sudo tailscale up --authkey=` + tsAuthKey + ` --hostname=xit-` + region + `-$INSTANCE_ID --advertise-exit-node --ssh
+sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes`
 
 		// Encode the string in base64
 		userDataScriptBase64 := base64.StdEncoding.EncodeToString([]byte(userDataScript))
@@ -159,8 +174,10 @@ func init() {
 
 	runCmd.PersistentFlags().StringP("ts-auth-key", "", "", "TailScale Auth Key")
 	runCmd.PersistentFlags().StringP("region", "", "", "AWS Region to create the instance into")
+	runCmd.PersistentFlags().StringP("shutdown", "s", "2h", "Terminate the instance after the specified duration (e.g. 2h, 1h30m, 30m)")
 	viper.BindPFlag("ts_auth_key", runCmd.PersistentFlags().Lookup("ts-auth-key"))
 	viper.BindPFlag("region", runCmd.PersistentFlags().Lookup("region"))
+	viper.BindPFlag("shutdown", runCmd.PersistentFlags().Lookup("shutdown"))
 
 	// Here you will define your flags and configuration settings.
 
@@ -169,5 +186,4 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// runCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
