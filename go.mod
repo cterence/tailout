@@ -3,7 +3,7 @@ module github.com/cterence/xit
 go 1.20
 
 require (
-	github.com/aws/aws-sdk-go v1.44.275
+	github.com/aws/aws-sdk-go v1.44.276
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.16.0
 	github.com/tailscale/hujson v0.0.0-20221223112325-20486734a56a
