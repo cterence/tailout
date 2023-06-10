@@ -18,6 +18,11 @@ var (
 	rootCmd = &cobra.Command{
 		Use:   "xit",
 		Short: "Create an instant exit node in your tailnet",
+		Long: `xit is a CLI tool to create an instant exit node in your tailnet.
+		
+		xit will create a new exit node in your tailnet, and then connect to it. This will allow you to create a VPN tunnel to anywhere in the world.
+		
+		Example : xit connect xit-eu-west-3-i-048afd4880f66c596`,
 		// 		Long: `A longer description that spans multiple lines and likely contains
 		// examples and usage of using your application. For example:
 

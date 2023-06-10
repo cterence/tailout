@@ -5,14 +5,20 @@ package cmd
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
+	"github.com/adhocore/chin"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/cterence/xit/common"
+	"github.com/ktr0731/go-fuzzyfinder"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"golang.org/x/exp/slices"
 )
 
 // runCmd represents the run command
@@ -31,6 +37,8 @@ This command will create an EC2 instance in the targeted region with the followi
 	Run: func(cmd *cobra.Command, args []string) {
 		// Set up AWS session in the desired region
 		tsAuthKey := viper.GetString("ts_auth_key")
+		tsApiKey := viper.GetString("ts_api_key")
+		tailnet := viper.GetString("ts_tailnet")
 		region := viper.GetString("region")
 		dryRun := viper.GetBool("dry_run")
 		shutdown := viper.GetString("shutdown")
@@ -47,16 +55,44 @@ This command will create an EC2 instance in the targeted region with the followi
 			return
 		}
 
-		sess, err := session.NewSession(&aws.Config{
-			Region: aws.String(region),
-		})
+		sess, err := session.NewSession(&aws.Config{})
 		if err != nil {
 			fmt.Println("Failed to create session:", err)
 			return
 		}
 
 		// Create EC2 service client
-		svc := ec2.New(sess)
+
+		if region == "" {
+			svc := ec2.New(sess, aws.NewConfig().WithRegion("us-east-1"))
+			regions, err := svc.DescribeRegions(&ec2.DescribeRegionsInput{})
+			if err != nil {
+				fmt.Println("Failed to describe regions:", err)
+				return
+			}
+
+			regionNames := []string{}
+			for _, region := range regions.Regions {
+				regionNames = append(regionNames, *region.RegionName)
+			}
+
+			slices.SortFunc(regionNames, func(a, b string) bool {
+				return a > b
+			})
+
+			// Create a fuzzy finder selector with the region names
+			idx, err := fuzzyfinder.Find(regionNames, func(i int) string {
+				return regionNames[i]
+			})
+			if err != nil {
+				fmt.Println("Failed to select region:", err)
+				return
+			}
+
+			region = regionNames[idx]
+		}
+
+		svc := ec2.New(sess, aws.NewConfig().WithRegion(region))
 
 		// Filter to fetch the latest Ubuntu LTS AMI ID
 		amazonLinuxFilter := []*ec2.Filter{
@@ -136,7 +172,6 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 
 		createdInstance := runResult.Instances[0]
 		fmt.Println("EC2 instance created successfully:", *createdInstance.InstanceId)
-
 		// Create tags for the instance
 		tags := []*ec2.Tag{
 			{
@@ -155,15 +190,97 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 			return
 		}
 
+		var wg sync.WaitGroup
+
+		s := chin.New().WithWait(&wg)
+
+		go s.Start()
+
+		fmt.Println("Waiting for instance to be running...")
+
+		// Add a handler for the instance state change event
+		err = svc.WaitUntilInstanceRunning(&ec2.DescribeInstancesInput{
+			InstanceIds: []*string{aws.String(*createdInstance.InstanceId)},
+		})
+		if err != nil {
+			fmt.Println("Failed to wait for instance to be created:", err)
+			return
+		}
+
+		fmt.Println("OK.")
+		fmt.Println("Waiting for instance to join tailnet...")
+
+		// Call common.GetDevices periodically and search for the instance
+		// If the instance is found, print the command to use it as an exit node
+
 		machineName := fmt.Sprintf("xit-%s-%s", region, *createdInstance.InstanceId)
 
-		fmt.Printf(`You will be able to use this insance as an exit node within a few minutes with the following command:
+		timeout := time.Now().Add(2 * time.Minute)
 
-sudo tailscale up --exit-node=%s
+		for {
+			devices, err := common.GetDevices(tsApiKey, tailnet)
+			if err != nil {
+				fmt.Println("Failed to get devices:", err)
+				return
+			}
 
-You will may have to add other parameters to your command depending on your configuration.
-If you use a mobile client, you will be able to use it in a few minutes.
-`, machineName)
+			var userDevices common.UserDevices
+
+			json.Unmarshal(devices, &userDevices)
+
+			for _, device := range userDevices.Devices {
+				if device.Hostname == machineName {
+					goto found
+				}
+			}
+
+			// Timeouts after 2 minutes
+			if time.Now().After(timeout) {
+				fmt.Println("Timeout waiting for instance to join tailnet.")
+				return
+			}
+
+			time.Sleep(2 * time.Second)
+		}
+
+	found:
+		s.Stop()
+		wg.Wait()
+
+		// Get public IP address of created instance
+		describeInput := &ec2.DescribeInstancesInput{
+			InstanceIds: []*string{aws.String(*createdInstance.InstanceId)},
+		}
+
+		describeResult, err := svc.DescribeInstances(describeInput)
+		if err != nil {
+			fmt.Println("Failed to describe EC2 instance:", err)
+			return
+		}
+
+		if len(describeResult.Reservations) == 0 {
+			fmt.Println("No reservations found.")
+			return
+		}
+
+		reservation := describeResult.Reservations[0]
+		if len(reservation.Instances) == 0 {
+			fmt.Println("No instances found.")
+			return
+		}
+
+		instance := reservation.Instances[0]
+		if instance.PublicIpAddress == nil {
+			fmt.Println("No public IP address found.")
+			return
+		}
+
+		fmt.Printf("Instance %s joined tailnet.\n", machineName)
+		fmt.Println("Public IP address:", *instance.PublicIpAddress)
+		fmt.Println("Planned termination time:", time.Now().Add(duration).Format(time.RFC3339))
+		fmt.Println()
+
+		connectCmd.Run(cmd, []string{machineName})
 	},
 }
 

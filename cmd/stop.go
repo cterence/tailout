@@ -4,127 +4,124 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/cterence/xit/common"
+	"github.com/ktr0731/go-fuzzyfinder"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-var (
-	Machine string
-)
-
 // stopCmd represents the stop command
 var stopCmd = &cobra.Command{
-	Use:   "stop",
+	Use:   "stop [machine names...]",
+	Args:  cobra.ArbitraryArgs,
 	Short: "Terminates instances created by xit",
 	Long: `By default, terminates all instances created by xit. 
 
-If the --machine flag is provided, only the specified instance will be terminated.
+If one or more machine names are specified, only those instances will be terminated.
 
-Example : xit stop --machine xit-eu-west-3-i-048afd4880f66c596`,
+Example : xit stop xit-eu-west-3-i-048afd4880f66c596`,
 	Run: func(cmd *cobra.Command, args []string) {
-		region := viper.GetString("region")
+		// TODO: fetch all devices, make a multi fuzzy finder and stop all the selected devices while changing the region if needed
 		dryRun := viper.GetBool("dry_run")
+		tsApiKey := viper.GetString("ts_api_key")
+		tailnet := viper.GetString("ts_tailnet")
 
-		sess, err := session.NewSession(&aws.Config{
-			Region: aws.String(region),
-		})
-		if err != nil {
-			fmt.Println("Failed to create session:", err)
-			return
-		}
+		machineStop := args
 
-		// Create EC2 service client
-		svc := ec2.New(sess)
-
-		// Define the tag key and value
-		tagKey := "App"
-		tagValue := "xit"
-
-		// Filter to describe instances with the specified tag
-		tagFilter := &ec2.Filter{
-			Name:   aws.String("tag:" + tagKey),
-			Values: []*string{aws.String(tagValue)},
-		}
-
-		statusFilter := &ec2.Filter{
-			Name:   aws.String("instance-state-name"),
-			Values: []*string{aws.String("running")},
-		}
-
-		instanceFilter := &ec2.Filter{}
-		if Machine != "" {
-			// extract the instance ID from the machine name with a regex
-			instanceID := regexp.MustCompile(`i\-[a-z0-9]{17}$`).FindString(Machine)
-			if instanceID == "" {
-				fmt.Println("Failed to extract instance ID from machine name")
+		if len(machineStop) == 0 {
+			devicesResponse, err := common.GetDevices(tsApiKey, tailnet)
+			if err != nil {
+				fmt.Println("Failed to get devices:", err)
 				return
 			}
-			instanceFilter = &ec2.Filter{
-				Name:   aws.String("instance-id"),
-				Values: []*string{aws.String(instanceID)},
+
+			var userDevices common.UserDevices
+
+			json.Unmarshal(devicesResponse, &userDevices)
+
+			xitDevices := []string{}
+			// Try to find a device with the tag : tag:xit
+			for _, device := range userDevices.Devices {
+				for _, tag := range device.Tags {
+					lastSeen, err := time.Parse(time.RFC3339, device.LastSeen)
+					if err != nil {
+						fmt.Println("Failed to parse lastSeen:", err)
+						return
+					}
+
+					if tag == "tag:xit" && time.Since(lastSeen) < 5*time.Minute {
+						xitDevices = append(xitDevices, device.Hostname)
+					}
+				}
+			}
+
+			if len(xitDevices) == 0 {
+				fmt.Println("No xit devices found")
+				return
+			}
+
+			// Create a fuzzy finder selector with the xit devices
+			idx, err := fuzzyfinder.FindMulti(xitDevices, func(i int) string {
+				return xitDevices[i]
+			})
+			if err != nil {
+				fmt.Println("Failed to find device:", err)
+				return
+			}
+
+			machineStop = []string{}
+			for _, i := range idx {
+				machineStop = append(machineStop, xitDevices[i])
 			}
 		}
 
-		// DescribeInstances to get the instances with the specified tag
-		instancesOutput, err := svc.DescribeInstances(&ec2.DescribeInstancesInput{
-			Filters: []*ec2.Filter{tagFilter, statusFilter, instanceFilter},
-		})
-		if err != nil {
-			fmt.Println("Failed to describe instances:", err)
-			return
-		}
+		for _, machine := range machineStop {
+			fmt.Println("Stopping", machine)
 
-		// Extract the instance IDs
-		var instanceIDs []*string
-		for _, reservation := range instancesOutput.Reservations {
-			for _, instance := range reservation.Instances {
-				instanceIDs = append(instanceIDs, instance.InstanceId)
+			// Create a session to share configuration, and load external configuration.
+			sess, err := session.NewSession(&aws.Config{})
+			if err != nil {
+				fmt.Println("Failed to create session:", err)
+				return
 			}
-		}
 
-		if instanceIDs == nil {
-			fmt.Println("No running instances found.")
-			return
-		}
+			// Extract the region from the machine name with a regex
+			region := regexp.MustCompile(`(?i)(eu|us|ap|sa|ca|cn|me|af|us-gov|us-iso)-[a-z]{2,}-[0-9]`).FindString(machine)
 
-		var instanceIDList []string
-		for _, instanceID := range instanceIDs {
-			instanceIDList = append(instanceIDList, *instanceID)
-		}
+			// Create EC2 service client
+			svc := ec2.New(sess, aws.NewConfig().WithRegion(region))
 
-		// TerminateInstances to terminate the instances
-		_, err = svc.TerminateInstances(&ec2.TerminateInstancesInput{
-			InstanceIds: instanceIDs,
-			DryRun:      aws.Bool(dryRun),
-		})
-		if err != nil {
-			fmt.Println("Failed to terminate instances:", err)
-			return
-		}
+			// Extract the instance ID from the machine name with a regex
 
-		fmt.Printf("Instances with tag App=xit terminated successfully: %v\n", instanceIDList)
+			instanceID := regexp.MustCompile(`i\-[a-z0-9]{17}$`).FindString(machine)
+
+			_, err = svc.TerminateInstances(&ec2.TerminateInstancesInput{
+				DryRun:      aws.Bool(dryRun),
+				InstanceIds: []*string{aws.String(instanceID)},
+			})
+
+			if err != nil {
+				fmt.Println("Failed to terminate instance:", err)
+				return
+			}
+
+			fmt.Println("Successfully terminated instance", machine)
+		}
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(stopCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// stopCmd.PersistentFlags().String("foo", "", "A help for foo")
-	stopCmd.Flags().StringP("region", "", "", "AWS Region to create the instance into")
-	stopCmd.Flags().StringVarP(&Machine, "machine", "m", "", "Machine to stop")
-	viper.BindPFlag("region", stopCmd.PersistentFlags().Lookup("region"))
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// stopCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	stopCmd.PersistentFlags().StringP("ts-api-key", "", "", "TailScale API Key")
+	stopCmd.PersistentFlags().StringP("ts-tailnet", "", "", "TailScale Tailnet")
+	viper.BindPFlag("ts_api_key", stopCmd.PersistentFlags().Lookup("ts-api-key"))
+	viper.BindPFlag("ts_tailnet", stopCmd.PersistentFlags().Lookup("ts-tailnet"))
 }

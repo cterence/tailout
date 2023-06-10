@@ -4,166 +4,14 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 
+	"github.com/cterence/xit/common"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/tailscale/hujson"
 )
-
-type Configuration struct {
-	ACLs                []ACL               `json:"acls,omitempty"`
-	Hosts               map[string]string   `json:"hosts,omitempty"`
-	Groups              map[string][]string `json:"groups,omitempty"`
-	Tests               []Test              `json:"tests,omitempty"`
-	TagOwners           map[string][]string `json:"tagOwners,omitempty"`
-	AutoApprovers       AutoApprovers       `json:"autoApprovers,omitempty"`
-	SSH                 []SSHConfiguration  `json:"ssh,omitempty"`
-	DerpMap             DerpMap             `json:"derpMap,omitempty"`
-	DisableIPv4         bool                `json:"disableIPv4,omitempty"`
-	RandomizeClientPort bool                `json:"randomizeClientPort,omitempty"`
-}
-
-type ACL struct {
-	Action string   `json:"action,omitempty"`
-	Src    []string `json:"src,omitempty"`
-	Dst    []string `json:"dst,omitempty"`
-	Proto  string   `json:"proto,omitempty"`
-}
-
-type Test struct {
-	Src    string   `json:"src,omitempty"`
-	Accept []string `json:"accept,omitempty"`
-	Deny   []string `json:"deny,omitempty"`
-}
-
-type AutoApprovers struct {
-	Routes   map[string][]string `json:"routes,omitempty"`
-	ExitNode []string            `json:"exitNode,omitempty"`
-}
-
-type SSHConfiguration struct {
-	Action string   `json:"action,omitempty"`
-	Src    []string `json:"src,omitempty"`
-	Dst    []string `json:"dst,omitempty"`
-	Users  []string `json:"users,omitempty"`
-}
-
-type DerpMap struct {
-	Regions map[string]DerpRegion `json:"regions,omitempty"`
-}
-
-type DerpRegion struct {
-	RegionID int    `json:"regionID,omitempty"`
-	HostName string `json:"hostName,omitempty"`
-}
-
-func getACL(tsApiKey, baseURL, tailnet string) ([]byte, error) {
-	url := fmt.Sprintf("%s/api/v2/tailnet/%s/acl", baseURL, tailnet)
-
-	// Create the HTTP request
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
-	}
-
-	// Set the authentication header
-	req.Header.Set("Authorization", "Bearer "+tsApiKey)
-	req.Header.Set("Content-Type", "application/json")
-
-	// Send the HTTP request
-	client := http.DefaultClient
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send HTTP request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Check the response status code
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to get ACL: %s", resp.Status)
-	}
-
-	// Read the response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read HTTP response: %w", err)
-	}
-
-	return body, nil
-}
-
-func validateACL(tsApiKey, baseURL, tailnet string, config Configuration) error {
-	configString, err := json.Marshal(config)
-	if err != nil {
-		return fmt.Errorf("failed to marshal ACL: %w", err)
-	}
-
-	url := fmt.Sprintf("%s/api/v2/tailnet/%s/acl/validate", baseURL, tailnet)
-
-	// Create the HTTP request
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(configString))
-	if err != nil {
-		return fmt.Errorf("failed to create HTTP request: %w", err)
-	}
-
-	// Set the authentication header
-	req.Header.Set("Authorization", "Bearer "+tsApiKey)
-	req.Header.Set("Content-Type", "application/json")
-
-	// Send the HTTP request
-	client := http.DefaultClient
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to send HTTP request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Check the response status code
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to validate ACL: %s", resp.Status)
-	}
-
-	return nil
-}
-
-func updateACL(tsApiKey, baseURL, tailnet string, config Configuration) error {
-	configString, err := json.Marshal(config)
-	if err != nil {
-		return fmt.Errorf("failed to marshal ACL: %w", err)
-	}
-
-	url := fmt.Sprintf("%s/api/v2/tailnet/%s/acl", baseURL, tailnet)
-
-	// Create the HTTP request
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(configString))
-	if err != nil {
-		return fmt.Errorf("failed to create HTTP request: %w", err)
-	}
-
-	// Set the authentication header
-	req.Header.Set("Authorization", "Bearer "+tsApiKey)
-	req.Header.Set("Content-Type", "application/json")
-
-	// Send the HTTP request
-	client := http.DefaultClient
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to send HTTP request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Check the response status code
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to update ACL: %s", resp.Status)
-	}
-
-	return nil
-}
 
 var initCmd = &cobra.Command{
 	Use:   "init",
@@ -179,16 +27,14 @@ In details it will:
 		tailnet := viper.GetString("ts_tailnet")
 		dryRun := viper.GetBool("dry_run")
 
-		baseURL := "https://api.tailscale.com"
-
 		// Get the ACL configuration
-		acl, err := getACL(tsApiKey, baseURL, tailnet)
+		acl, err := common.GetACL(tsApiKey, tailnet)
 		if err != nil {
 			fmt.Println("Failed to get ACL:", err)
 			return
 		}
 
-		var config Configuration
+		var config common.Configuration
 
 		standardACL, err := hujson.Standardize(acl)
 		if err != nil {
@@ -207,7 +53,7 @@ In details it will:
 		config.AutoApprovers.ExitNode = []string{"tag:xit"}
 		// TODO: find how to add a ssh configuration allowing users to ssh into tagged xit machines
 
-		allowXitSSH := SSHConfiguration{
+		allowXitSSH := common.SSHConfiguration{
 			Action: "check",
 			Src:    []string{"autogroup:members"},
 			Dst:    []string{"tag:xit"},
@@ -227,7 +73,7 @@ In details it will:
 		}
 
 		// Validate the updated ACL configuration
-		err = validateACL(tsApiKey, baseURL, tailnet, config)
+		err = common.ValidateACL(tsApiKey, tailnet, config)
 		if err != nil {
 			fmt.Println("Failed to validate ACL:", err)
 			return
@@ -235,7 +81,7 @@ In details it will:
 
 		// Update the ACL configuration
 		if !dryRun {
-			err = updateACL(tsApiKey, baseURL, tailnet, config)
+			err = common.UpdateACL(tsApiKey, tailnet, config)
 			if err != nil {
 				fmt.Println("Failed to update ACL:", err)
 				return

@@ -3,8 +3,8 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-bin = "./tmp/main init --config=./.xit.yaml"
-cmd = "go mod tidy && go build -o ./tmp/main ."
+bin = "./tmp/xit"
+cmd = "go mod tidy && go build -o ./tmp/xit ."
 delay = 1000
 exclude_dir = ["assets", "tmp", "vendor", "testdata"]
 exclude_file = []
