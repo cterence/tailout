@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/cterence/xit/common"
+	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 )
 
@@ -36,18 +37,20 @@ var disconnectCmd = &cobra.Command{
 		}
 
 		command := "tailscale up --exit-node="
-		fmt.Printf("Will run the command:\nsudo %s\n", command)
 
-		var confirm string
+		// Use promptui for the confirmation prompt
+		prompt := promptui.Select{
+			Label: "Are you sure you want to disconnect from this machine?",
+			Items: []string{"yes", "no"},
+		}
 
-		fmt.Println("\nAre you sure you want to disconnect from the current exit node? (y/n)")
-		_, err = fmt.Scanln(&confirm)
+		_, result, err := prompt.Run()
 		if err != nil {
 			fmt.Println("Failed to read input:", err)
 			return
 		}
 
-		if confirm != "y" {
+		if result != "yes" {
 			fmt.Println("Aborting...")
 			return
 		}
@@ -71,14 +74,19 @@ var disconnectCmd = &cobra.Command{
 
 		fmt.Printf("\nExisting configuration found, will run updated tailscale up command:\nsudo %s\n", command)
 
-		fmt.Println("\nAre you sure you want to run this command? (y/n)")
-		_, err = fmt.Scanln(&confirm)
+		// Use promptui for the confirmation prompt
+		prompt = promptui.Select{
+			Label: "Are you sure you want to disconnect from this machine?",
+			Items: []string{"yes", "no"},
+		}
+
+		_, result, err = prompt.Run()
 		if err != nil {
 			fmt.Println("Failed to read input:", err)
 			return
 		}
 
-		if confirm != "y" {
+		if result != "yes" {
 			fmt.Println("Aborting...")
 			return
 		}
@@ -95,14 +103,4 @@ var disconnectCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(disconnectCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// disconnectCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// disconnectCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

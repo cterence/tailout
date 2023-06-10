@@ -6,9 +6,16 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
+	"time"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/manifoldco/promptui"
 )
 
-type Configuration struct {
+type Policy struct {
 	ACLs                []ACL               `json:"acls,omitempty"`
 	Hosts               map[string]string   `json:"hosts,omitempty"`
 	Groups              map[string][]string `json:"groups,omitempty"`
@@ -124,7 +131,17 @@ const (
 	baseURL = "https://api.tailscale.com"
 )
 
-func GetDevices(tsApiKey, tailnet string) ([]byte, error) {
+// Create a method HasTag for Device
+func (d Device) HasTag(tag string) bool {
+	for _, t := range d.Tags {
+		if t == tag {
+			return true
+		}
+	}
+	return false
+}
+
+func GetDevices(tsApiKey, tailnet string) ([]Device, error) {
 	url := fmt.Sprintf("%s/api/v2/tailnet/%s/devices", baseURL, tailnet)
 
 	body, err := sendRequest(tsApiKey, tailnet, "GET", url, nil)
@@ -132,61 +149,194 @@ func GetDevices(tsApiKey, tailnet string) ([]byte, error) {
 		return nil, fmt.Errorf("failed to get devices: %w", err)
 	}
 
-	return body, nil
+	var userDevices UserDevices
+	err = json.Unmarshal(body, &userDevices)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal devices: %w", err)
+	}
+
+	return userDevices.Devices, nil
 }
 
-func GetACL(tsApiKey, tailnet string) ([]byte, error) {
+func GetPolicy(tsApiKey, tailnet string) (Policy, error) {
 	url := fmt.Sprintf("%s/api/v2/tailnet/%s/acl", baseURL, tailnet)
 
 	body, err := sendRequest(tsApiKey, tailnet, "GET", url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get ACL: %w", err)
+		return Policy{}, fmt.Errorf("failed to get ACL: %w", err)
 	}
 
-	return body, nil
+	var policy Policy
+	err = json.Unmarshal(body, &policy)
+	if err != nil {
+		return Policy{}, fmt.Errorf("failed to unmarshal policy: %w", err)
+	}
+
+	return policy, nil
 }
 
-func ValidateACL(tsApiKey, tailnet string, config Configuration) error {
+func ValidatePolicy(tsApiKey, tailnet string, config Policy) error {
 	configString, err := json.Marshal(config)
 	if err != nil {
-		return fmt.Errorf("failed to marshal ACL: %w", err)
+		return fmt.Errorf("failed to marshal policy: %w", err)
 	}
 
 	url := fmt.Sprintf("%s/api/v2/tailnet/%s/acl/validate", baseURL, tailnet)
 
 	_, err = sendRequest(tsApiKey, tailnet, "POST", url, configString)
 	if err != nil {
-		return fmt.Errorf("failed to validate ACL: %w", err)
+		return fmt.Errorf("failed to validate policy: %w", err)
 	}
 
 	return nil
 }
 
-func UpdateACL(tsApiKey, tailnet string, config Configuration) error {
+func UpdatePolicy(tsApiKey, tailnet string, config Policy) error {
 	configString, err := json.Marshal(config)
 	if err != nil {
-		return fmt.Errorf("failed to marshal ACL: %w", err)
+		return fmt.Errorf("failed to marshal policy: %w", err)
 	}
 
 	url := fmt.Sprintf("%s/api/v2/tailnet/%s/acl", baseURL, tailnet)
 
-	_, err = sendRequest(tsApiKey, tailnet, "PUT", url, configString)
+	_, err = sendRequest(tsApiKey, tailnet, "POST", url, configString)
 	if err != nil {
-		return fmt.Errorf("failed to update ACL: %w", err)
+		return fmt.Errorf("failed to update policy: %w", err)
 	}
 
 	return nil
 }
 
-func GetDevice(device, tsApiKey string) ([]byte, error) {
-	url := fmt.Sprintf("%s/api/v2/device/%s", baseURL, device)
+func GetDevice(tsApiKey, id string) (Device, error) {
+	url := fmt.Sprintf("%s/api/v2/device/%s", baseURL, id)
 
 	body, err := sendRequest(tsApiKey, "", "GET", url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get device: %w", err)
+		return Device{}, fmt.Errorf("failed to get device: %w", err)
 	}
 
-	return body, nil
+	var device Device
+	err = json.Unmarshal(body, &device)
+	if err != nil {
+		return Device{}, fmt.Errorf("failed to unmarshal device: %w", err)
+	}
+
+	return device, nil
+}
+
+func DeleteDevice(tsApiKey, id string) error {
+	url := fmt.Sprintf("%s/api/v2/device/%s", baseURL, id)
+
+	_, err := sendRequest(tsApiKey, "", "DELETE", url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to delete device: %w", err)
+	}
+
+	return nil
+}
+
+func FindDeviceByHostname(tsApiKey, hostname, tailnet string) (Device, error) {
+	devices, err := GetDevices(tsApiKey, tailnet)
+	if err != nil {
+		return Device{}, fmt.Errorf("failed to get devices: %w", err)
+	}
+
+	if err != nil {
+		return Device{}, fmt.Errorf("failed to unmarshal devices: %w", err)
+	}
+
+	for _, device := range devices {
+		if device.Hostname == hostname {
+			return device, nil
+		}
+	}
+
+	return Device{}, fmt.Errorf("device with hostname %s not found", hostname)
+}
+
+func FindDevicesByHostname(tsApiKey, tailnet string, hostnames []string) ([]Device, error) {
+	devices, err := GetDevices(tsApiKey, tailnet)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get devices: %w", err)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal devices: %w", err)
+	}
+
+	var foundDevices []Device
+	for _, device := range devices {
+		for _, hostname := range hostnames {
+			if device.Hostname == hostname {
+				foundDevices = append(foundDevices, device)
+			}
+		}
+	}
+
+	return foundDevices, nil
+}
+
+func FindActiveXitDevices(tsApiKey, tailnet string) ([]Device, error) {
+	devices, err := GetDevices(tsApiKey, tailnet)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get devices: %w", err)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal devices: %w", err)
+	}
+
+	var foundDevices []Device
+	for _, device := range devices {
+		lastSeen, err := time.Parse(time.RFC3339, device.LastSeen)
+		if err != nil {
+			fmt.Println("Failed to parse lastSeen:", err)
+			return nil, err
+		}
+		if device.HasTag("tag:xit") && time.Since(lastSeen) < 5*time.Minute {
+			foundDevices = append(foundDevices, device)
+		}
+	}
+
+	return foundDevices, nil
+}
+
+// Function that uses promptui to return an AWS region fetched from the aws sdk
+func SelectRegion() (string, error) {
+	sess, err := session.NewSession(&aws.Config{})
+	if err != nil {
+		fmt.Println("Failed to create session:", err)
+		return "", err
+	}
+
+	svc := ec2.New(sess, aws.NewConfig().WithRegion("us-east-1"))
+	regions, err := svc.DescribeRegions(&ec2.DescribeRegionsInput{})
+	if err != nil {
+		fmt.Println("Failed to describe regions:", err)
+		return "", err
+	}
+
+	regionNames := []string{}
+	for _, region := range regions.Regions {
+		regionNames = append(regionNames, *region.RegionName)
+	}
+
+	sort.Slice(regionNames, func(i, j int) bool {
+		return regionNames[i] < regionNames[j]
+	})
+
+	// Prompt for region with promptui displaying 15 regions at a time, sorted alphabetically and searchable
+	prompt := promptui.Select{
+		Label: "Select AWS region",
+		Items: regionNames,
+	}
+
+	_, region, err := prompt.Run()
+	if err != nil {
+		return "", fmt.Errorf("failed to select region: %w", err)
+	}
+
+	return region, nil
 }
 
 // Function that takes every common code in the above function and makes it a function
@@ -199,7 +349,8 @@ func sendRequest(tsApiKey, tailnet, method, url string, body []byte) ([]byte, er
 	req.Header.Set("Authorization", "Bearer "+tsApiKey)
 	req.Header.Set("Content-Type", "application/json")
 
-	client := http.DefaultClient
+	client := &http.Client{}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send HTTP request: %w", err)
@@ -207,7 +358,7 @@ func sendRequest(tsApiKey, tailnet, method, url string, body []byte) ([]byte, er
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to send HTTP request: %s", resp.Status)
+		return nil, fmt.Errorf("failed to get OK status code: %s", resp.Status)
 	}
 
 	body, err = io.ReadAll(resp.Body)

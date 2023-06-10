@@ -10,7 +10,6 @@ import (
 	"github.com/cterence/xit/common"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/tailscale/hujson"
 )
 
 var initCmd = &cobra.Command{
@@ -19,7 +18,7 @@ var initCmd = &cobra.Command{
 	Long: `This command will initialize your tailnet for xit.
 	
 In details it will:
-- add a tag:xit to your ACL
+- add a tag:xit to your policy
 - update autoapprovers to allow exit nodes to be created
 - add a ssh configuration allowing users to ssh into tagged xit machines`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -27,31 +26,16 @@ In details it will:
 		tailnet := viper.GetString("ts_tailnet")
 		dryRun := viper.GetBool("dry_run")
 
-		// Get the ACL configuration
-		acl, err := common.GetACL(tsApiKey, tailnet)
+		// Get the policy configuration
+		policy, err := common.GetPolicy(tsApiKey, tailnet)
 		if err != nil {
-			fmt.Println("Failed to get ACL:", err)
-			return
-		}
-
-		var config common.Configuration
-
-		standardACL, err := hujson.Standardize(acl)
-		if err != nil {
-			fmt.Println("Failed to standardize ACL:", err)
-			return
-		}
-
-		err = json.Unmarshal(standardACL, &config)
-		if err != nil {
-			fmt.Println("Failed to unmarshal ACL:", err)
+			fmt.Println("Failed to get policy:", err)
 			return
 		}
 
 		// Update the configuration
-		config.TagOwners["tag:xit"] = []string{}
-		config.AutoApprovers.ExitNode = []string{"tag:xit"}
-		// TODO: find how to add a ssh configuration allowing users to ssh into tagged xit machines
+		policy.TagOwners["tag:xit"] = []string{}
+		policy.AutoApprovers.ExitNode = []string{"tag:xit"}
 
 		allowXitSSH := common.SSHConfiguration{
 			Action: "check",
@@ -62,37 +46,62 @@ In details it will:
 
 		xitSSHConfigExists := false
 
-		for _, sshConfig := range config.SSH {
+		for _, sshConfig := range policy.SSH {
 			if sshConfig.Action == "check" && sshConfig.Src[0] == "autogroup:members" && sshConfig.Dst[0] == "tag:xit" && sshConfig.Users[0] == "autogroup:nonroot" && sshConfig.Users[1] == "root" {
 				xitSSHConfigExists = true
 			}
 		}
 
 		if !xitSSHConfigExists {
-			config.SSH = append(config.SSH, allowXitSSH)
+			policy.SSH = append(policy.SSH, allowXitSSH)
 		}
 
-		// Validate the updated ACL configuration
-		err = common.ValidateACL(tsApiKey, tailnet, config)
+		// Validate the updated policy configuration
+		err = common.ValidatePolicy(tsApiKey, tailnet, policy)
 		if err != nil {
-			fmt.Println("Failed to validate ACL:", err)
+			fmt.Println("Failed to validate policy:", err)
 			return
 		}
 
-		// Update the ACL configuration
+		// Update the policy configuration
 		if !dryRun {
-			err = common.UpdateACL(tsApiKey, tailnet, config)
+			policyJSON, err := json.MarshalIndent(policy, "", "  ")
 			if err != nil {
-				fmt.Println("Failed to update ACL:", err)
+				fmt.Println("Failed to marshal policy:", err)
 				return
 			}
+
+			// Make a prompt to show the update that will be done
+			fmt.Printf(`The following update to the policy will be done:")
+Add tag:xit to tagOwners
+Update autoapprovers to allow exit nodes to be approved when tagged with tag:xit
+Add a ssh configuration allowing users to ssh into tagged xit machines
+
+Your new policy document will look like this:
+%s
+
+Do you want to continue? [y/N]
+`, policyJSON)
+
+			var answer string
+			fmt.Scanln(&answer)
+			if answer != "y" {
+				fmt.Println("Aborting")
+				return
+			}
+
+			err = common.UpdatePolicy(tsApiKey, tailnet, policy)
+			if err != nil {
+				fmt.Println("Failed to update policy:", err)
+				return
+			}
+
+			fmt.Println("Policy updated")
 		}
 	},
 }
 
 func init() {
-	cobra.OnInitialize(InitConfig)
-
 	rootCmd.AddCommand(initCmd)
 
 	initCmd.PersistentFlags().StringP("ts-api-key", "", "", "TailScale API Key")
@@ -100,13 +109,4 @@ func init() {
 
 	viper.BindPFlag("ts_api_key", initCmd.PersistentFlags().Lookup("ts-api-key"))
 	viper.BindPFlag("ts_tailnet", initCmd.PersistentFlags().Lookup("ts-tailnet"))
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// initCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

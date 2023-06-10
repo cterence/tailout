@@ -6,13 +6,13 @@ require (
 	github.com/adhocore/chin v1.1.0
 	github.com/aws/aws-sdk-go v1.44.280
 	github.com/ktr0731/go-fuzzyfinder v0.7.0
+	github.com/manifoldco/promptui v0.9.0
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.16.0
-	github.com/tailscale/hujson v0.0.0-20221223112325-20486734a56a
-	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 )
 
 require (
+	github.com/chzyer/readline v1.5.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/frankban/quicktest v1.14.5 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect

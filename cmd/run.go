@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -15,10 +14,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/cterence/xit/common"
-	"github.com/ktr0731/go-fuzzyfinder"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"golang.org/x/exp/slices"
 )
 
 // runCmd represents the run command
@@ -64,32 +61,11 @@ This command will create an EC2 instance in the targeted region with the followi
 		// Create EC2 service client
 
 		if region == "" {
-			svc := ec2.New(sess, aws.NewConfig().WithRegion("us-east-1"))
-			regions, err := svc.DescribeRegions(&ec2.DescribeRegionsInput{})
-			if err != nil {
-				fmt.Println("Failed to describe regions:", err)
-				return
-			}
-
-			regionNames := []string{}
-			for _, region := range regions.Regions {
-				regionNames = append(regionNames, *region.RegionName)
-			}
-
-			slices.SortFunc(regionNames, func(a, b string) bool {
-				return a > b
-			})
-
-			// Create a fuzzy finder selector with the region names
-			idx, err := fuzzyfinder.Find(regionNames, func(i int) string {
-				return regionNames[i]
-			})
+			region, err = common.SelectRegion()
 			if err != nil {
 				fmt.Println("Failed to select region:", err)
 				return
 			}
-
-			region = regionNames[idx]
 		}
 
 		svc := ec2.New(sess, aws.NewConfig().WithRegion(region))
@@ -136,7 +112,7 @@ sudo sysctl -p /etc/sysctl.conf
 export INSTANCE_ID=$(curl http://169.254.169.254/latest/meta-data/instance-id)
 
 curl -fsSL https://tailscale.com/install.sh | sh
-sudo tailscale up --authkey=` + tsAuthKey + ` --hostname=xit-` + region + `-$INSTANCE_ID --advertise-exit-node --ssh
+sudo tailscale up --auth-key=` + tsAuthKey + ` --hostname=xit-` + region + `-$INSTANCE_ID --advertise-exit-node --ssh
 sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes`
 
 		// Encode the string in base64
@@ -172,6 +148,8 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 
 		createdInstance := runResult.Instances[0]
 		fmt.Println("EC2 instance created successfully:", *createdInstance.InstanceId)
+		machineName := fmt.Sprintf("xit-%s-%s", region, *createdInstance.InstanceId)
+		fmt.Println("Instance will be named", machineName)
 		// Create tags for the instance
 		tags := []*ec2.Tag{
 			{
@@ -213,8 +191,6 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 		// Call common.GetDevices periodically and search for the instance
 		// If the instance is found, print the command to use it as an exit node
 
-		machineName := fmt.Sprintf("xit-%s-%s", region, *createdInstance.InstanceId)
-
 		timeout := time.Now().Add(2 * time.Minute)
 
 		for {
@@ -224,11 +200,7 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 				return
 			}
 
-			var userDevices common.UserDevices
-
-			json.Unmarshal(devices, &userDevices)
-
-			for _, device := range userDevices.Devices {
+			for _, device := range devices {
 				if device.Hostname == machineName {
 					goto found
 				}
@@ -285,13 +257,12 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 }
 
 func init() {
-	cobra.OnInitialize(InitConfig)
-
 	rootCmd.AddCommand(runCmd)
 
 	runCmd.PersistentFlags().StringP("ts-auth-key", "", "", "TailScale Auth Key")
 	runCmd.PersistentFlags().StringP("region", "", "", "AWS Region to create the instance into")
 	runCmd.PersistentFlags().StringP("shutdown", "s", "2h", "Terminate the instance after the specified duration (e.g. 2h, 1h30m, 30m)")
+
 	viper.BindPFlag("ts_auth_key", runCmd.PersistentFlags().Lookup("ts-auth-key"))
 	viper.BindPFlag("region", runCmd.PersistentFlags().Lookup("region"))
 	viper.BindPFlag("shutdown", runCmd.PersistentFlags().Lookup("shutdown"))

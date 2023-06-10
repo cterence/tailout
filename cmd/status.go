@@ -12,7 +12,6 @@ import (
 	"github.com/cterence/xit/common"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/tailscale/hujson"
 )
 
 // statusCmd represents the status command
@@ -34,24 +33,10 @@ var statusCmd = &cobra.Command{
 			return
 		}
 
-		standardDevices, err := hujson.Standardize(devices)
-		if err != nil {
-			fmt.Println("Failed to standardize devices:", err)
-			return
-		}
-
-		var userDevices common.UserDevices
-
-		err = json.Unmarshal(standardDevices, &userDevices)
-		if err != nil {
-			fmt.Println("Failed to unmarshal devices:", err)
-			return
-		}
-
 		found := []string{}
 
 		// Try to find a device with the tag : tag:xit
-		for _, device := range userDevices.Devices {
+		for _, device := range devices {
 			for _, tag := range device.Tags {
 				// Check if lastSeen is within the last 5 minutes, time looks like 2023-06-10T13:13:38Z
 				lastSeen, err := time.Parse(time.RFC3339, device.LastSeen)
@@ -79,12 +64,11 @@ var statusCmd = &cobra.Command{
 		json.Unmarshal(out, &status)
 
 		if status.ExitNodeID != "" {
-			body, err := common.GetDevice(status.ExitNodeID, tsApiKey)
+			currentDevice, err = common.GetDevice(tsApiKey, status.ExitNodeID)
 			if err != nil {
 				fmt.Println("Failed to get device:", err)
 				return
 			}
-			json.Unmarshal(body, &currentDevice)
 		}
 
 		if len(found) == 0 {
@@ -103,8 +87,6 @@ var statusCmd = &cobra.Command{
 }
 
 func init() {
-	cobra.OnInitialize(InitConfig)
-
 	rootCmd.AddCommand(statusCmd)
 
 	statusCmd.PersistentFlags().StringP("ts-api-key", "", "", "TailScale API Key")
@@ -112,14 +94,4 @@ func init() {
 
 	viper.BindPFlag("ts_api_key", statusCmd.PersistentFlags().Lookup("ts-api-key"))
 	viper.BindPFlag("ts_tailnet", statusCmd.PersistentFlags().Lookup("ts-tailnet"))
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// statusCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// statusCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

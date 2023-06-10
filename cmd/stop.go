@@ -4,10 +4,8 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"regexp"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -29,62 +27,49 @@ If one or more machine names are specified, only those instances will be termina
 
 Example : xit stop xit-eu-west-3-i-048afd4880f66c596`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// TODO: fetch all devices, make a multi fuzzy finder and stop all the selected devices while changing the region if needed
 		dryRun := viper.GetBool("dry_run")
 		tsApiKey := viper.GetString("ts_api_key")
 		tailnet := viper.GetString("ts_tailnet")
 
-		machineStop := args
+		var devicesToStop []common.Device
 
-		if len(machineStop) == 0 {
-			devicesResponse, err := common.GetDevices(tsApiKey, tailnet)
-			if err != nil {
-				fmt.Println("Failed to get devices:", err)
-				return
-			}
+		xitDevices, err := common.FindActiveXitDevices(tsApiKey, tailnet)
+		if err != nil {
+			fmt.Println("Failed to find active xit devices:", err)
+			return
+		}
 
-			var userDevices common.UserDevices
+		if len(xitDevices) == 0 {
+			fmt.Println("No xit devices found")
+			return
+		}
 
-			json.Unmarshal(devicesResponse, &userDevices)
-
-			xitDevices := []string{}
-			// Try to find a device with the tag : tag:xit
-			for _, device := range userDevices.Devices {
-				for _, tag := range device.Tags {
-					lastSeen, err := time.Parse(time.RFC3339, device.LastSeen)
-					if err != nil {
-						fmt.Println("Failed to parse lastSeen:", err)
-						return
-					}
-
-					if tag == "tag:xit" && time.Since(lastSeen) < 5*time.Minute {
-						xitDevices = append(xitDevices, device.Hostname)
-					}
-				}
-			}
-
-			if len(xitDevices) == 0 {
-				fmt.Println("No xit devices found")
-				return
-			}
-
+		if len(args) == 0 {
 			// Create a fuzzy finder selector with the xit devices
 			idx, err := fuzzyfinder.FindMulti(xitDevices, func(i int) string {
-				return xitDevices[i]
+				return xitDevices[i].Hostname
 			})
 			if err != nil {
 				fmt.Println("Failed to find device:", err)
 				return
 			}
 
-			machineStop = []string{}
+			devicesToStop = []common.Device{}
 			for _, i := range idx {
-				machineStop = append(machineStop, xitDevices[i])
+				devicesToStop = append(devicesToStop, xitDevices[i])
+			}
+		} else {
+			for _, device := range xitDevices {
+				for _, arg := range args {
+					if device.Hostname == arg {
+						devicesToStop = append(devicesToStop, device)
+					}
+				}
 			}
 		}
 
-		for _, machine := range machineStop {
-			fmt.Println("Stopping", machine)
+		for _, machine := range devicesToStop {
+			fmt.Println("Stopping", machine.Hostname)
 
 			// Create a session to share configuration, and load external configuration.
 			sess, err := session.NewSession(&aws.Config{})
@@ -94,14 +79,14 @@ Example : xit stop xit-eu-west-3-i-048afd4880f66c596`,
 			}
 
 			// Extract the region from the machine name with a regex
-			region := regexp.MustCompile(`(?i)(eu|us|ap|sa|ca|cn|me|af|us-gov|us-iso)-[a-z]{2,}-[0-9]`).FindString(machine)
+			region := regexp.MustCompile(`(?i)(eu|us|ap|sa|ca|cn|me|af|us-gov|us-iso)-[a-z]{2,}-[0-9]`).FindString(machine.Hostname)
 
 			// Create EC2 service client
 			svc := ec2.New(sess, aws.NewConfig().WithRegion(region))
 
 			// Extract the instance ID from the machine name with a regex
 
-			instanceID := regexp.MustCompile(`i\-[a-z0-9]{17}$`).FindString(machine)
+			instanceID := regexp.MustCompile(`i\-[a-z0-9]{17}$`).FindString(machine.Hostname)
 
 			_, err = svc.TerminateInstances(&ec2.TerminateInstancesInput{
 				DryRun:      aws.Bool(dryRun),
@@ -113,15 +98,25 @@ Example : xit stop xit-eu-west-3-i-048afd4880f66c596`,
 				return
 			}
 
-			fmt.Println("Successfully terminated instance", machine)
+			fmt.Println("Successfully terminated instance", machine.Hostname)
+
+			err = common.DeleteDevice(tsApiKey, machine.ID)
+			if err != nil {
+				fmt.Println("Failed to delete device from tailnet:", err)
+				return
+			}
+
+			fmt.Println("Successfully terminated device", machine.Hostname)
 		}
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(stopCmd)
+
 	stopCmd.PersistentFlags().StringP("ts-api-key", "", "", "TailScale API Key")
 	stopCmd.PersistentFlags().StringP("ts-tailnet", "", "", "TailScale Tailnet")
+
 	viper.BindPFlag("ts_api_key", stopCmd.PersistentFlags().Lookup("ts-api-key"))
 	viper.BindPFlag("ts_tailnet", stopCmd.PersistentFlags().Lookup("ts-tailnet"))
 }
