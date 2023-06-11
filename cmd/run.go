@@ -1,6 +1,3 @@
-/*
-Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -31,6 +28,14 @@ This command will create an EC2 instance in the targeted region with the followi
 - SSH access enabled
 - Tagged with App=xit
 - The instance will be created as a spot instance in the default VPC`,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		viper.BindPFlag("ts_auth_key", cmd.PersistentFlags().Lookup("ts-auth-key"))
+		viper.BindPFlag("region", cmd.PersistentFlags().Lookup("region"))
+		viper.BindPFlag("shutdown", cmd.PersistentFlags().Lookup("shutdown"))
+		viper.BindPFlag("connect", cmd.PersistentFlags().Lookup("connect"))
+		viper.BindPFlag("dry_run", cmd.PersistentFlags().Lookup("dry-run"))
+		viper.BindPFlag("non_interactive", cmd.PersistentFlags().Lookup("non-interactive"))
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// Set up AWS session in the desired region
 		tsAuthKey := viper.GetString("ts_auth_key")
@@ -173,6 +178,7 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 			return
 		}
 
+		// Initialize loading spinner
 		var wg sync.WaitGroup
 		var s *chin.Chin
 
@@ -223,6 +229,7 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 		}
 
 	found:
+		// Stop the loading spinner
 		if !nonInteractive {
 			s.Stop()
 			wg.Wait()
@@ -271,26 +278,12 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 }
 
 func init() {
-	cobra.OnInitialize(InitConfig)
 	rootCmd.AddCommand(runCmd)
 
 	runCmd.PersistentFlags().StringP("ts-auth-key", "", "", "TailScale Auth Key")
 	runCmd.PersistentFlags().StringP("region", "r", "", "AWS Region to create the instance into")
 	runCmd.PersistentFlags().StringP("shutdown", "s", "2h", "Terminate the instance after the specified duration (e.g. 2h, 1h30m, 30m)")
-	runCmd.PersistentFlags().BoolP("non-interactive", "n", false, "Do not prompt for confirmation")
 	runCmd.PersistentFlags().BoolP("connect", "c", false, "Connect to the instance after it is created")
-
-	viper.BindPFlag("ts_auth_key", runCmd.PersistentFlags().Lookup("ts-auth-key"))
-	viper.BindPFlag("region", runCmd.PersistentFlags().Lookup("region"))
-	viper.BindPFlag("shutdown", runCmd.PersistentFlags().Lookup("shutdown"))
-	viper.BindPFlag("non_interactive", runCmd.PersistentFlags().Lookup("non-interactive"))
-	viper.BindPFlag("connect", runCmd.PersistentFlags().Lookup("connect"))
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
+	runCmd.PersistentFlags().BoolP("dry-run", "d", false, "Do not launch the instance")
+	runCmd.PersistentFlags().BoolP("non-interactive", "", false, "Do not prompt for confirmation")
 }

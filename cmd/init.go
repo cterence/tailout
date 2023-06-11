@@ -1,6 +1,3 @@
-/*
-Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -21,10 +18,17 @@ In details it will:
 - add a tag:xit to your policy
 - update autoapprovers to allow exit nodes to be created
 - add a ssh configuration allowing users to ssh into tagged xit machines`,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		viper.BindPFlag("ts_api_key", cmd.PersistentFlags().Lookup("ts-api-key"))
+		viper.BindPFlag("ts_tailnet", cmd.PersistentFlags().Lookup("ts-tailnet"))
+		viper.BindPFlag("non_interactive", cmd.PersistentFlags().Lookup("non-interactive"))
+		viper.BindPFlag("dry_run", cmd.PersistentFlags().Lookup("dry-run"))
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		tsApiKey := viper.GetString("ts_api_key")
 		tailnet := viper.GetString("ts_tailnet")
 		dryRun := viper.GetBool("dry_run")
+		nonInteractive := viper.GetBool("non_interactive")
 
 		// Get the policy configuration
 		policy, err := common.GetPolicy(tsApiKey, tailnet)
@@ -79,15 +83,19 @@ Add a ssh configuration allowing users to ssh into tagged xit machines
 
 Your new policy document will look like this:
 %s
-
-Do you want to continue? [y/N]
 `, policyJSON)
 
-			var answer string
-			fmt.Scanln(&answer)
-			if answer != "y" {
-				fmt.Println("Aborting")
-				return
+			if !nonInteractive {
+				result, err := common.PromptYesNo("Do you want to continue?")
+				if err != nil {
+					fmt.Println("Failed to prompt for confirmation:", err)
+					return
+				}
+
+				if !result {
+					fmt.Println("Aborting...")
+					return
+				}
 			}
 
 			err = common.UpdatePolicy(tsApiKey, tailnet, policy)
@@ -106,7 +114,6 @@ func init() {
 
 	initCmd.PersistentFlags().StringP("ts-api-key", "", "", "TailScale API Key")
 	initCmd.PersistentFlags().StringP("ts-tailnet", "", "", "TailScale Tailnet")
-
-	viper.BindPFlag("ts_api_key", initCmd.PersistentFlags().Lookup("ts-api-key"))
-	viper.BindPFlag("ts_tailnet", initCmd.PersistentFlags().Lookup("ts-tailnet"))
+	initCmd.PersistentFlags().BoolP("non-interactive", "n", false, "Do not prompt for confirmation")
+	initCmd.PersistentFlags().BoolP("dry-run", "d", false, "Do not actually terminate instances")
 }

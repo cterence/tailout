@@ -8,11 +8,15 @@ on:
     branches: [main]
 
 env:
-  AWS_REGION: eu-west-3
   BINARY_NAME: xit
-  TS_TAILNET: ${{ secrets.TS_TAILNET }}
-  TS_API_KEY: ${{ secrets.TS_API_KEY }}
-  TS_AUTH_KEY: ${{ secrets.TS_AUTH_KEY }}
+  # xit environment variables
+  XIT_REGION: eu-west-3
+  XIT_NON_INTERACTIVE: "true"
+  XIT_CONNECT: "true"
+  XIT_SHUTDOWN: 5m
+  XIT_TS_TAILNET: ${{ secrets.TS_TAILNET }}
+  XIT_TS_API_KEY: ${{ secrets.TS_API_KEY }}
+  XIT_TS_AUTH_KEY: ${{ secrets.TS_AUTH_KEY }}
 
 permissions:
   id-token: write # This is required for requesting the JWT
@@ -35,15 +39,15 @@ jobs:
       - name: Setup environment
         uses: ./.github/actions/setup
         with:
-          region: ${{ env.AWS_REGION }}
+          region: ${{ env.XIT_REGION }}
           role_arn: ${{ secrets.AWS_GITHUB_ACTIONS_XIT_ROLE_ARN }}
           tailscale_authkey: ${{ secrets.TS_GITHUB_ACTIONS_AUTH_KEY }}
       - name: Download xit
         uses: ./.github/actions/download
         with:
           binary_name: ${{ env.BINARY_NAME }}
-      # - name: Run "xit run"
-      #   run: ./xit run --region ${{ env.AWS_REGION }} --non-interactive --connect --shutdown 5m
-      # TODO: check if the public IP address matches the one from the new instance
+      - name: Run "xit run"
+        run: ./xit run
       - name: Run xit status
         run: ./xit status
+      # TODO: check if the public IP address matches the one from the new instance

@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os/exec"
+	"regexp"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -367,4 +370,84 @@ func sendRequest(tsApiKey, tailnet, method, url string, body []byte) ([]byte, er
 	}
 
 	return body, nil
+}
+
+// Function that uses promptui to return a boolean value
+func PromptYesNo(question string) (bool, error) {
+	prompt := promptui.Select{
+		Label: question,
+		Items: []string{"Yes", "No"},
+	}
+
+	_, result, err := prompt.Run()
+	if err != nil {
+		return false, fmt.Errorf("failed to prompt for yes/no: %w", err)
+	}
+
+	if result == "Yes" {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func RunTailscaleUpCommand(command string, nonInteractive bool) error {
+	tailscaleCommand := strings.Split(command, " ")
+
+	if nonInteractive {
+		tailscaleCommand = append([]string{"-n"}, tailscaleCommand...)
+	}
+
+	fmt.Println("Running command:\nsudo", strings.Join(tailscaleCommand, " "))
+
+	if !nonInteractive {
+		result, err := PromptYesNo("Are you sure you want to run this command?")
+		if err != nil {
+			return fmt.Errorf("failed to prompt for confirmation: %w", err)
+		}
+
+		if !result {
+			fmt.Println("Aborting...")
+			return nil
+		}
+	}
+
+	out, err := exec.Command("sudo", tailscaleCommand...).CombinedOutput()
+	// If the command was unsuccessful, extract tailscale up command from error message with a regex and run it
+	if err != nil {
+		// extract latest "tailscale up" command from output with a regex and run it
+		regexp := regexp.MustCompile(`tailscale up .*`)
+		loggedTailscaleCommand := regexp.FindString(string(out))
+
+		if loggedTailscaleCommand == "" {
+			return fmt.Errorf("failed to find tailscale up command in output: %s", string(out))
+		}
+
+		fmt.Printf("Existing Tailscale configuration found, will run updated tailscale up command:\nsudo %s\n", loggedTailscaleCommand)
+
+		// Use promptui for the confirmation prompt
+		if !nonInteractive {
+			result, err := PromptYesNo("Are you sure you want to run this command?")
+			if err != nil {
+				return fmt.Errorf("failed to prompt for confirmation: %w", err)
+			}
+
+			if !result {
+				fmt.Println("Aborting...")
+				return nil
+			}
+		}
+
+		tailscaleCommand = strings.Split(loggedTailscaleCommand, " ")
+
+		if nonInteractive {
+			tailscaleCommand = append([]string{"-n"}, tailscaleCommand...)
+		}
+
+		_, err = exec.Command("sudo", tailscaleCommand...).CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("failed to run command: %w", err)
+		}
+	}
+	return nil
 }

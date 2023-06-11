@@ -1,6 +1,3 @@
-/*
-Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -35,9 +32,6 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(InitConfig)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.xit.yaml)")
-	rootCmd.PersistentFlags().BoolP("dry-run", "", false, "Dry run the command")
-
-	viper.BindPFlag("dry_run", rootCmd.PersistentFlags().Lookup("dry-run"))
 }
 
 func InitConfig() {
@@ -53,6 +47,7 @@ func InitConfig() {
 		viper.AddConfigPath(home)
 		viper.SetConfigType("yaml")
 		viper.SetConfigName(".xit")
+		viper.SetEnvPrefix("xit")
 	}
 
 	viper.AutomaticEnv()
