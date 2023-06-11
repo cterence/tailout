@@ -83,6 +83,16 @@ var statusCmd = &cobra.Command{
 				}
 			}
 		}
+
+		// Query for the public IP address of this machine
+		out, err = exec.Command("curl", "ifconfig.me").Output()
+
+		if err != nil {
+			fmt.Println("Failed to get public IP:", err)
+			return
+		}
+
+		fmt.Println("Public IP:", string(out))
 	},
 }
 

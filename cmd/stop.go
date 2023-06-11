@@ -68,6 +68,8 @@ Example : xit stop xit-eu-west-3-i-048afd4880f66c596`,
 			}
 		}
 
+		// TODO: cleanup xit instances that were not last seen recently
+		// TODO: warning when stopping a deice to which you are connected, propose to disconnect before
 		for _, machine := range devicesToStop {
 			fmt.Println("Stopping", machine.Hostname)
 

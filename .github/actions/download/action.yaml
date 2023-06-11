@@ -1,0 +1,19 @@
+name: download
+description: Download the go binary
+
+inputs:
+  binary_name:
+    description: The name of the binary to build
+    required: true
+    default: "xit"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Download ${{ inputs.binary_name }} binary
+      uses: actions/download-artifact@v3
+      with:
+        name: ${{ inputs.binary_name }}
+    - name: Make ${{ inputs.binary_name }} executable
+      run: chmod +x ${{ inputs.binary_name }}
+      shell: bash

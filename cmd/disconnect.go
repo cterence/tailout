@@ -60,44 +60,38 @@ var disconnectCmd = &cobra.Command{
 		out, err = exec.Command("sudo", strings.Split(command, " ")...).CombinedOutput()
 		// If the command was unsuccessful, extract tailscale up command from error message with a regex and run it
 		if err != nil {
-			goto rerun
+			// extract latest "tailscale up" command from output with a regex and run it
+			regexp := regexp.MustCompile(`tailscale up .*`)
+			command = regexp.FindString(string(out))
+
+			fmt.Printf("\nExisting configuration found, will run updated tailscale up command:\nsudo %s\n", command)
+
+			// Use promptui for the confirmation prompt
+			prompt = promptui.Select{
+				Label: "Are you sure you want to disconnect from this machine?",
+				Items: []string{"yes", "no"},
+			}
+
+			_, result, err = prompt.Run()
+			if err != nil {
+				fmt.Println("Failed to read input:", err)
+				return
+			}
+
+			if result != "yes" {
+				fmt.Println("Aborting...")
+				return
+			}
+
+			_, err = exec.Command("sudo", strings.Split(command, " ")...).CombinedOutput()
+			if err != nil {
+				fmt.Println("Failed to run command:", err)
+			}
+
+			fmt.Println("Disconnected.")
 		}
 
 		fmt.Println("Disconnected.")
-
-		return
-
-	rerun:
-		// extract latest "tailscale up" command from output with a regex and run it
-		regexp := regexp.MustCompile(`tailscale up .*`)
-		command = regexp.FindString(string(out))
-
-		fmt.Printf("\nExisting configuration found, will run updated tailscale up command:\nsudo %s\n", command)
-
-		// Use promptui for the confirmation prompt
-		prompt = promptui.Select{
-			Label: "Are you sure you want to disconnect from this machine?",
-			Items: []string{"yes", "no"},
-		}
-
-		_, result, err = prompt.Run()
-		if err != nil {
-			fmt.Println("Failed to read input:", err)
-			return
-		}
-
-		if result != "yes" {
-			fmt.Println("Aborting...")
-			return
-		}
-
-		_, err = exec.Command("sudo", strings.Split(command, " ")...).CombinedOutput()
-		if err != nil {
-			fmt.Println("Failed to run command:", err)
-		}
-
-		fmt.Println("Disconnected.")
-
 	},
 }
 

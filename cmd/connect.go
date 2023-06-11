@@ -29,6 +29,8 @@ var connectCmd = &cobra.Command{
 		// Using the CLI on the host, run tailscale up and choose the exit node with the machine name provided
 		tsApiKey := viper.GetString("ts_api_key")
 		tailnet := viper.GetString("ts_tailnet")
+		nonInteractive := viper.GetBool("non_interactive")
+		// Create ternary operator to choose between sudo and sudo -n
 
 		var machineConnect string
 
@@ -71,63 +73,74 @@ var connectCmd = &cobra.Command{
 		fmt.Printf("Will run the command:\nsudo tailscale up --exit-node=%s\n", machineConnect)
 
 		// Create a confirmation prompt
+		var result string
 
 		// Use promptui for the confirmation prompt
-		prompt := promptui.Select{
-			Label: "Are you sure you want to connect to this machine?",
-			Items: []string{"yes", "no"},
+		if !nonInteractive {
+			prompt := promptui.Select{
+				Label: "Are you sure you want to connect to this machine?",
+				Items: []string{"yes", "no"},
+			}
+
+			_, result, err := prompt.Run()
+			if err != nil {
+				fmt.Println("Failed to read input:", err)
+				return
+			}
+
+			if result != "yes" {
+				fmt.Println("Aborting...")
+				return
+			}
 		}
 
-		_, result, err := prompt.Run()
-		if err != nil {
-			fmt.Println("Failed to read input:", err)
-			return
+		sudoNonInteractive := ""
+		if nonInteractive {
+			sudoNonInteractive = "-n"
 		}
 
-		if result != "yes" {
-			fmt.Println("Aborting...")
-			return
-		}
-
+		// FIXME: Have correct errors when sudo is not available
 		// Run the command and parse the output
-
-		out, err := exec.Command("sudo", "tailscale", "up", "--exit-node="+machineConnect).CombinedOutput()
+		out, err := exec.Command("sudo", sudoNonInteractive, "tailscale", "up", "--exit-node="+machineConnect).CombinedOutput()
 		// If the command was unsuccessful, extract tailscale up command from error message with a regex and run it
 		if err != nil {
-			goto rerun
-		}
+			// extract latest "tailscale up" command from output with a regex and run it
+			regexp := regexp.MustCompile(`tailscale up .*`)
+			tailscaleUpCommand := regexp.FindString(string(out))
 
-		fmt.Println("Connected.")
+			fmt.Printf("\nExisting configuration found, will run updated tailscale up command:\nsudo %s\n\n", tailscaleUpCommand)
 
-		return
+			// Use promptui for the confirmation prompt
+			if !nonInteractive {
+				prompt := promptui.Select{
+					Label: "Are you sure you want to connect to this machine?",
+					Items: []string{"yes", "no"},
+				}
 
-	rerun:
-		// extract latest "tailscale up" command from output with a regex and run it
-		regexp := regexp.MustCompile(`tailscale up .*`)
-		tailscaleUpCommand := regexp.FindString(string(out))
+				_, result, err = prompt.Run()
+				if err != nil {
+					fmt.Println("Failed to read input:", err)
+					return
+				}
 
-		fmt.Printf("\nExisting configuration found, will run updated tailscale up command:\nsudo %s\n\n", tailscaleUpCommand)
+				if result != "yes" {
+					fmt.Println("Aborting...")
+					return
+				}
+			}
 
-		// Use promptui for the confirmation prompt
-		prompt = promptui.Select{
-			Label: "Are you sure you want to connect to this machine?",
-			Items: []string{"yes", "no"},
-		}
+			tailscaleUpCommandSplitted := strings.Split(tailscaleUpCommand, " ")
+			tailscaleUpCommandSplitted = append([]string{sudoNonInteractive}, tailscaleUpCommandSplitted...)
 
-		_, result, err = prompt.Run()
-		if err != nil {
-			fmt.Println("Failed to read input:", err)
-			return
-		}
-
-		if result == "yes" {
-			_, err = exec.Command("sudo", strings.Split(tailscaleUpCommand, " ")...).CombinedOutput()
+			_, err = exec.Command("sudo", tailscaleUpCommandSplitted...).CombinedOutput()
 			if err != nil {
 				fmt.Println("Failed to run command:", err)
 			}
 
 			fmt.Println("Connected.")
 		}
+
+		fmt.Println("Connected.")
 	},
 }
 
@@ -136,7 +149,9 @@ func init() {
 
 	connectCmd.PersistentFlags().StringP("ts-api-key", "", "", "TailScale API Key")
 	connectCmd.PersistentFlags().StringP("ts-tailnet", "", "", "TailScale Tailnet")
+	connectCmd.PersistentFlags().BoolP("non-interactive", "n", false, "Do not prompt for confirmation")
 
 	viper.BindPFlag("ts_api_key", connectCmd.PersistentFlags().Lookup("ts-api-key"))
 	viper.BindPFlag("ts_tailnet", connectCmd.PersistentFlags().Lookup("ts-tailnet"))
+	viper.BindPFlag("non_interactive", runCmd.PersistentFlags().Lookup("non-interactive"))
 }

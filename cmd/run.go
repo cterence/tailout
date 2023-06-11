@@ -39,6 +39,8 @@ This command will create an EC2 instance in the targeted region with the followi
 		region := viper.GetString("region")
 		dryRun := viper.GetBool("dry_run")
 		shutdown := viper.GetString("shutdown")
+		nonInteractive := viper.GetBool("non_interactive")
+		connect := viper.GetBool("connect")
 
 		duration, err := time.ParseDuration(shutdown)
 		if err != nil {
@@ -60,12 +62,15 @@ This command will create an EC2 instance in the targeted region with the followi
 
 		// Create EC2 service client
 
-		if region == "" {
+		if region == "" && !nonInteractive {
 			region, err = common.SelectRegion()
 			if err != nil {
 				fmt.Println("Failed to select region:", err)
 				return
 			}
+		} else if region == "" && nonInteractive {
+			fmt.Println("error: selected non-interactive mode but no region was explicitly specified")
+			return
 		}
 
 		svc := ec2.New(sess, aws.NewConfig().WithRegion(region))
@@ -169,10 +174,12 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 		}
 
 		var wg sync.WaitGroup
+		var s *chin.Chin
 
-		s := chin.New().WithWait(&wg)
-
-		go s.Start()
+		if !nonInteractive {
+			s = chin.New().WithWait(&wg)
+			go s.Start()
+		}
 
 		fmt.Println("Waiting for instance to be running...")
 
@@ -216,9 +223,10 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 		}
 
 	found:
-		s.Stop()
-		wg.Wait()
-
+		if !nonInteractive {
+			s.Stop()
+			wg.Wait()
+		}
 		// Get public IP address of created instance
 		describeInput := &ec2.DescribeInstancesInput{
 			InstanceIds: []*string{aws.String(*createdInstance.InstanceId)},
@@ -250,22 +258,33 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 		fmt.Printf("Instance %s joined tailnet.\n", machineName)
 		fmt.Println("Public IP address:", *instance.PublicIpAddress)
 		fmt.Println("Planned termination time:", time.Now().Add(duration).Format(time.RFC3339))
-		fmt.Println()
 
-		connectCmd.Run(cmd, []string{machineName})
+		if connect {
+			fmt.Println()
+			args = []string{machineName}
+			if nonInteractive {
+				args = append(args, "--non-interactive")
+			}
+			connectCmd.Run(cmd, args)
+		}
 	},
 }
 
 func init() {
+	cobra.OnInitialize(InitConfig)
 	rootCmd.AddCommand(runCmd)
 
 	runCmd.PersistentFlags().StringP("ts-auth-key", "", "", "TailScale Auth Key")
-	runCmd.PersistentFlags().StringP("region", "", "", "AWS Region to create the instance into")
+	runCmd.PersistentFlags().StringP("region", "r", "", "AWS Region to create the instance into")
 	runCmd.PersistentFlags().StringP("shutdown", "s", "2h", "Terminate the instance after the specified duration (e.g. 2h, 1h30m, 30m)")
+	runCmd.PersistentFlags().BoolP("non-interactive", "n", false, "Do not prompt for confirmation")
+	runCmd.PersistentFlags().BoolP("connect", "c", false, "Connect to the instance after it is created")
 
 	viper.BindPFlag("ts_auth_key", runCmd.PersistentFlags().Lookup("ts-auth-key"))
 	viper.BindPFlag("region", runCmd.PersistentFlags().Lookup("region"))
 	viper.BindPFlag("shutdown", runCmd.PersistentFlags().Lookup("shutdown"))
+	viper.BindPFlag("non_interactive", runCmd.PersistentFlags().Lookup("non-interactive"))
+	viper.BindPFlag("connect", runCmd.PersistentFlags().Lookup("connect"))
 
 	// Here you will define your flags and configuration settings.
 
