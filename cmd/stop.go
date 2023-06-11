@@ -28,12 +28,14 @@ Example : xit stop xit-eu-west-3-i-048afd4880f66c596`,
 		viper.BindPFlag("ts_tailnet", cmd.PersistentFlags().Lookup("ts-tailnet"))
 		viper.BindPFlag("non_interactive", cmd.PersistentFlags().Lookup("non-interactive"))
 		viper.BindPFlag("dry_run", cmd.PersistentFlags().Lookup("dry-run"))
+		viper.BindPFlag("all", cmd.PersistentFlags().Lookup("all"))
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		tsApiKey := viper.GetString("ts_api_key")
 		tailnet := viper.GetString("ts_tailnet")
 		dryRun := viper.GetBool("dry_run")
 		nonInteractive := viper.GetBool("non_interactive")
+		stopAll := viper.GetBool("all")
 
 		var devicesToStop []common.Device
 
@@ -48,7 +50,7 @@ Example : xit stop xit-eu-west-3-i-048afd4880f66c596`,
 			return
 		}
 
-		if len(args) == 0 && !nonInteractive {
+		if len(args) == 0 && !nonInteractive && !stopAll {
 			// Create a fuzzy finder selector with the xit devices
 			idx, err := fuzzyfinder.FindMulti(xitDevices, func(i int) string {
 				return xitDevices[i].Hostname
@@ -63,12 +65,17 @@ Example : xit stop xit-eu-west-3-i-048afd4880f66c596`,
 				devicesToStop = append(devicesToStop, xitDevices[i])
 			}
 		} else {
-			for _, device := range xitDevices {
-				for _, arg := range args {
-					if device.Hostname == arg {
-						devicesToStop = append(devicesToStop, device)
+			if !stopAll {
+				devicesToStop = []common.Device{}
+				for _, device := range xitDevices {
+					for _, arg := range args {
+						if device.Hostname == arg {
+							devicesToStop = append(devicesToStop, device)
+						}
 					}
 				}
+			} else {
+				devicesToStop = xitDevices
 			}
 		}
 
@@ -142,4 +149,5 @@ func init() {
 	stopCmd.PersistentFlags().StringP("ts-tailnet", "", "", "TailScale Tailnet")
 	stopCmd.PersistentFlags().BoolP("non-interactive", "n", false, "Do not prompt for confirmation")
 	stopCmd.PersistentFlags().BoolP("dry-run", "", false, "Do not actually terminate instances")
+	stopCmd.PersistentFlags().BoolP("all", "", false, "Terminate all instances")
 }

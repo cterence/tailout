@@ -16,6 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/manifoldco/promptui"
+	"github.com/tailscale/hujson"
 )
 
 type Policy struct {
@@ -169,8 +170,13 @@ func GetPolicy(tsApiKey, tailnet string) (Policy, error) {
 		return Policy{}, fmt.Errorf("failed to get ACL: %w", err)
 	}
 
+	standardBody, err := hujson.Standardize(body)
+	if err != nil {
+		return Policy{}, fmt.Errorf("failed to standardize body: %w", err)
+	}
+
 	var policy Policy
-	err = json.Unmarshal(body, &policy)
+	err = json.Unmarshal(standardBody, &policy)
 	if err != nil {
 		return Policy{}, fmt.Errorf("failed to unmarshal policy: %w", err)
 	}

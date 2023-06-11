@@ -2,10 +2,10 @@ name: e2e
 
 on:
   push:
-    branches: [main, ci]
-    # branches: [main]
+    branches: [main]
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened]
 
 env:
   BINARY_NAME: xit
@@ -31,9 +31,20 @@ jobs:
         uses: ./.github/actions/build
         with:
           binary_name: ${{ env.BINARY_NAME }}
-  test:
+
+  e2e-tests:
     runs-on: ubuntu-latest
     needs: build
+    strategy:
+      matrix:
+        include:
+          - first_command: "xit init"
+          - first_command: "xit run"
+            second_command: "xit status"
+            third_command: "xit disconnect"
+          - first_command: "xit run"
+            second_command: "xit disconnect"
+            third_command: "xit status"
     steps:
       - uses: actions/checkout@v3
       - name: Setup environment
@@ -42,12 +53,33 @@ jobs:
           region: ${{ env.XIT_REGION }}
           role_arn: ${{ secrets.AWS_GITHUB_ACTIONS_XIT_ROLE_ARN }}
           tailscale_authkey: ${{ secrets.TS_GITHUB_ACTIONS_AUTH_KEY }}
-      - name: Download xit
-        uses: ./.github/actions/download
-        with:
           binary_name: ${{ env.BINARY_NAME }}
-      - name: Run "xit run"
-        run: ./xit run
-      - name: Run xit status
-        run: ./xit status
+      - name: First command
+        run: ${{ matrix.first_command }}
+      - name: Second command
+        if: ${{ matrix.second_command != '' }}
+        run: ${{ matrix.second_command }}
+      - name: Third command
+        if: ${{ matrix.third_command != '' }}
+        run: ${{ matrix.third_command }}
       # TODO: check if the public IP address matches the one from the new instance
+
+  # TODO: find a better concurrency pattern
+  cleanup:
+    runs-on: ubuntu-latest
+    needs: e2e-tests
+    concurrency:
+      group: cleanup
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup environment
+        uses: ./.github/actions/setup
+        with:
+          region: ${{ env.XIT_REGION }}
+          role_arn: ${{ secrets.AWS_GITHUB_ACTIONS_XIT_ROLE_ARN }}
+          tailscale_authkey: ${{ secrets.TS_GITHUB_ACTIONS_AUTH_KEY }}
+          binary_name: ${{ env.BINARY_NAME }}
+      - name: Cleanup
+        run: xit stop --all
+      # TODO: Add cleanup for github nodes as well

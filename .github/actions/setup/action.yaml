@@ -2,6 +2,10 @@ name: setup
 description: Setup the environment for xit
 
 inputs:
+  binary_name:
+    description: The name of the binary to build
+    required: true
+    default: "xit"
   tailscale_authkey:
     description: The tailscale authkey to use
     required: true
@@ -30,3 +34,13 @@ runs:
       with:
         authkey: ${{ inputs.tailscale_authkey }}
         version: ${{ inputs.tailscale_version }}
+    - name: Download ${{ inputs.binary_name }} binary
+      uses: actions/download-artifact@v3
+      with:
+        name: ${{ inputs.binary_name }}
+    - name: Make ${{ inputs.binary_name }} executable
+      run: chmod +x ${{ inputs.binary_name }}
+      shell: bash
+    - name: Move ${{ inputs.binary_name }} to /usr/local/bin
+      run: sudo mv ${{ inputs.binary_name }} /usr/local/bin
+      shell: bash
