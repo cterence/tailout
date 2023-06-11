@@ -1,6 +1,3 @@
-/*
-Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -23,6 +20,10 @@ var statusCmd = &cobra.Command{
 	This command will show the status of xit devices, including the device name and whether it is connected or not.
 	
 	Example : xit status`,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		viper.BindPFlag("ts_api_key", cmd.PersistentFlags().Lookup("ts-api-key"))
+		viper.BindPFlag("ts_tailnet", cmd.PersistentFlags().Lookup("ts-tailnet"))
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		tsApiKey := viper.GetString("ts_api_key")
 		tailnet := viper.GetString("ts_tailnet")
@@ -83,6 +84,16 @@ var statusCmd = &cobra.Command{
 				}
 			}
 		}
+
+		// Query for the public IP address of this machine
+		out, err = exec.Command("curl", "ifconfig.me").Output()
+
+		if err != nil {
+			fmt.Println("Failed to get public IP:", err)
+			return
+		}
+
+		fmt.Println("Public IP:", string(out))
 	},
 }
 
@@ -91,7 +102,4 @@ func init() {
 
 	statusCmd.PersistentFlags().StringP("ts-api-key", "", "", "TailScale API Key")
 	statusCmd.PersistentFlags().StringP("ts-tailnet", "", "", "TailScale Tailnet")
-
-	viper.BindPFlag("ts_api_key", statusCmd.PersistentFlags().Lookup("ts-api-key"))
-	viper.BindPFlag("ts_tailnet", statusCmd.PersistentFlags().Lookup("ts-tailnet"))
 }

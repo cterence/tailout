@@ -1,6 +1,3 @@
-/*
-Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -26,10 +23,19 @@ var stopCmd = &cobra.Command{
 If one or more machine names are specified, only those instances will be terminated.
 
 Example : xit stop xit-eu-west-3-i-048afd4880f66c596`,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		viper.BindPFlag("ts_api_key", cmd.PersistentFlags().Lookup("ts-api-key"))
+		viper.BindPFlag("ts_tailnet", cmd.PersistentFlags().Lookup("ts-tailnet"))
+		viper.BindPFlag("non_interactive", cmd.PersistentFlags().Lookup("non-interactive"))
+		viper.BindPFlag("dry_run", cmd.PersistentFlags().Lookup("dry-run"))
+		viper.BindPFlag("all", cmd.PersistentFlags().Lookup("all"))
+	},
 	Run: func(cmd *cobra.Command, args []string) {
-		dryRun := viper.GetBool("dry_run")
 		tsApiKey := viper.GetString("ts_api_key")
 		tailnet := viper.GetString("ts_tailnet")
+		dryRun := viper.GetBool("dry_run")
+		nonInteractive := viper.GetBool("non_interactive")
+		stopAll := viper.GetBool("all")
 
 		var devicesToStop []common.Device
 
@@ -44,7 +50,7 @@ Example : xit stop xit-eu-west-3-i-048afd4880f66c596`,
 			return
 		}
 
-		if len(args) == 0 {
+		if len(args) == 0 && !nonInteractive && !stopAll {
 			// Create a fuzzy finder selector with the xit devices
 			idx, err := fuzzyfinder.FindMulti(xitDevices, func(i int) string {
 				return xitDevices[i].Hostname
@@ -59,15 +65,40 @@ Example : xit stop xit-eu-west-3-i-048afd4880f66c596`,
 				devicesToStop = append(devicesToStop, xitDevices[i])
 			}
 		} else {
-			for _, device := range xitDevices {
-				for _, arg := range args {
-					if device.Hostname == arg {
-						devicesToStop = append(devicesToStop, device)
+			if !stopAll {
+				devicesToStop = []common.Device{}
+				for _, device := range xitDevices {
+					for _, arg := range args {
+						if device.Hostname == arg {
+							devicesToStop = append(devicesToStop, device)
+						}
 					}
 				}
+			} else {
+				devicesToStop = xitDevices
 			}
 		}
 
+		if !nonInteractive {
+			fmt.Println("The following devices will be stopped:")
+			for _, device := range devicesToStop {
+				fmt.Println("-", device.Hostname)
+			}
+
+			result, err := common.PromptYesNo("Are you sure you want to stop these machines?")
+			if err != nil {
+				fmt.Println("Failed to prompt for confirmation:", err)
+				return
+			}
+
+			if !result {
+				fmt.Println("Aborting...")
+				return
+			}
+		}
+
+		// TODO: cleanup xit instances that were not last seen recently
+		// TODO: warning when stopping a deice to which you are connected, propose to disconnect before
 		for _, machine := range devicesToStop {
 			fmt.Println("Stopping", machine.Hostname)
 
@@ -116,7 +147,7 @@ func init() {
 
 	stopCmd.PersistentFlags().StringP("ts-api-key", "", "", "TailScale API Key")
 	stopCmd.PersistentFlags().StringP("ts-tailnet", "", "", "TailScale Tailnet")
-
-	viper.BindPFlag("ts_api_key", stopCmd.PersistentFlags().Lookup("ts-api-key"))
-	viper.BindPFlag("ts_tailnet", stopCmd.PersistentFlags().Lookup("ts-tailnet"))
+	stopCmd.PersistentFlags().BoolP("non-interactive", "n", false, "Do not prompt for confirmation")
+	stopCmd.PersistentFlags().BoolP("dry-run", "", false, "Do not actually terminate instances")
+	stopCmd.PersistentFlags().BoolP("all", "", false, "Terminate all instances")
 }

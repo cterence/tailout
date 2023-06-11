@@ -1,0 +1,20 @@
+name: build
+description: Build the go binary
+
+inputs:
+  binary_name:
+    description: The name of the binary to build
+    required: true
+    default: "xit"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Build ${{ inputs.binary_name }}
+      run: go build -o ${{ inputs.binary_name }}
+      shell: bash
+    - name: Upload ${{ inputs.binary_name }} binary
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ inputs.binary_name }}
+        path: ${{ inputs.binary_name }}

@@ -1,6 +1,3 @@
-/*
-Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -31,6 +28,14 @@ This command will create an EC2 instance in the targeted region with the followi
 - SSH access enabled
 - Tagged with App=xit
 - The instance will be created as a spot instance in the default VPC`,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		viper.BindPFlag("ts_auth_key", cmd.PersistentFlags().Lookup("ts-auth-key"))
+		viper.BindPFlag("region", cmd.PersistentFlags().Lookup("region"))
+		viper.BindPFlag("shutdown", cmd.PersistentFlags().Lookup("shutdown"))
+		viper.BindPFlag("connect", cmd.PersistentFlags().Lookup("connect"))
+		viper.BindPFlag("dry_run", cmd.PersistentFlags().Lookup("dry-run"))
+		viper.BindPFlag("non_interactive", cmd.PersistentFlags().Lookup("non-interactive"))
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// Set up AWS session in the desired region
 		tsAuthKey := viper.GetString("ts_auth_key")
@@ -39,6 +44,8 @@ This command will create an EC2 instance in the targeted region with the followi
 		region := viper.GetString("region")
 		dryRun := viper.GetBool("dry_run")
 		shutdown := viper.GetString("shutdown")
+		nonInteractive := viper.GetBool("non_interactive")
+		connect := viper.GetBool("connect")
 
 		duration, err := time.ParseDuration(shutdown)
 		if err != nil {
@@ -60,12 +67,15 @@ This command will create an EC2 instance in the targeted region with the followi
 
 		// Create EC2 service client
 
-		if region == "" {
+		if region == "" && !nonInteractive {
 			region, err = common.SelectRegion()
 			if err != nil {
 				fmt.Println("Failed to select region:", err)
 				return
 			}
+		} else if region == "" && nonInteractive {
+			fmt.Println("error: selected non-interactive mode but no region was explicitly specified")
+			return
 		}
 
 		svc := ec2.New(sess, aws.NewConfig().WithRegion(region))
@@ -168,11 +178,14 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 			return
 		}
 
+		// Initialize loading spinner
 		var wg sync.WaitGroup
+		var s *chin.Chin
 
-		s := chin.New().WithWait(&wg)
-
-		go s.Start()
+		if !nonInteractive {
+			s = chin.New().WithWait(&wg)
+			go s.Start()
+		}
 
 		fmt.Println("Waiting for instance to be running...")
 
@@ -216,9 +229,11 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 		}
 
 	found:
-		s.Stop()
-		wg.Wait()
-
+		// Stop the loading spinner
+		if !nonInteractive {
+			s.Stop()
+			wg.Wait()
+		}
 		// Get public IP address of created instance
 		describeInput := &ec2.DescribeInstancesInput{
 			InstanceIds: []*string{aws.String(*createdInstance.InstanceId)},
@@ -250,9 +265,15 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 		fmt.Printf("Instance %s joined tailnet.\n", machineName)
 		fmt.Println("Public IP address:", *instance.PublicIpAddress)
 		fmt.Println("Planned termination time:", time.Now().Add(duration).Format(time.RFC3339))
-		fmt.Println()
 
-		connectCmd.Run(cmd, []string{machineName})
+		if connect {
+			fmt.Println()
+			args = []string{machineName}
+			if nonInteractive {
+				args = append(args, "--non-interactive")
+			}
+			connectCmd.Run(cmd, args)
+		}
 	},
 }
 
@@ -260,18 +281,9 @@ func init() {
 	rootCmd.AddCommand(runCmd)
 
 	runCmd.PersistentFlags().StringP("ts-auth-key", "", "", "TailScale Auth Key")
-	runCmd.PersistentFlags().StringP("region", "", "", "AWS Region to create the instance into")
+	runCmd.PersistentFlags().StringP("region", "r", "", "AWS Region to create the instance into")
 	runCmd.PersistentFlags().StringP("shutdown", "s", "2h", "Terminate the instance after the specified duration (e.g. 2h, 1h30m, 30m)")
-
-	viper.BindPFlag("ts_auth_key", runCmd.PersistentFlags().Lookup("ts-auth-key"))
-	viper.BindPFlag("region", runCmd.PersistentFlags().Lookup("region"))
-	viper.BindPFlag("shutdown", runCmd.PersistentFlags().Lookup("shutdown"))
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
+	runCmd.PersistentFlags().BoolP("connect", "c", false, "Connect to the instance after it is created")
+	runCmd.PersistentFlags().BoolP("dry-run", "d", false, "Do not launch the instance")
+	runCmd.PersistentFlags().BoolP("non-interactive", "", false, "Do not prompt for confirmation")
 }
