@@ -1,0 +1,12 @@
+tailscale:
+  api_key: tskey-api-kvwjgs1CNTRL-VgXs1NsS3bXjeXo2mCEDaXB428oPKUQQ8
+  auth_key: tskey-auth-kEHduk2CNTRL-qpfjp6sbG6Y7Q2qg1U677YoYcXmK455M
+  tailnet: cterence.github
+region: eu-west-3
+dry_run: false
+non_interactive: false
+create:
+  shutdown: 15m
+  connect: false
+stop:
+  all: false

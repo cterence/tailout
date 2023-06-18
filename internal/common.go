@@ -1,4 +1,4 @@
-package common
+package internal
 
 import (
 	"bytes"
@@ -66,7 +66,7 @@ type DerpRegion struct {
 	HostName string `json:"hostName,omitempty"`
 }
 
-type Device struct {
+type Node struct {
 	Addresses                 []string `json:"addresses"`
 	Authorized                bool     `json:"authorized"`
 	BlocksIncomingConnections bool     `json:"blocksIncomingConnections"`
@@ -78,7 +78,7 @@ type Device struct {
 	IsExternal                bool     `json:"isExternal"`
 	KeyExpiryDisabled         bool     `json:"keyExpiryDisabled"`
 	LastSeen                  string   `json:"lastSeen"`
-	MachineKey                string   `json:"machineKey,omitempty"`
+	MachineKey                string   `json:"NodeKey,omitempty"`
 	Name                      string   `json:"name,omitempty"`
 	NodeID                    string   `json:"nodeId"`
 	NodeKey                   string   `json:"nodeKey"`
@@ -126,17 +126,17 @@ type TailscaleStatus struct {
 	} `json:"Config"`
 }
 
-type UserDevices struct {
-	User    string   `json:"user"`
-	Devices []Device `json:"devices"`
+type UserNodes struct {
+	User  string `json:"user"`
+	Nodes []Node `json:"devices"`
 }
 
 const (
 	baseURL = "https://api.tailscale.com"
 )
 
-// Create a method HasTag for Device
-func (d Device) HasTag(tag string) bool {
+// Create a method HasTag for Node
+func (d Node) HasTag(tag string) bool {
 	for _, t := range d.Tags {
 		if t == tag {
 			return true
@@ -145,21 +145,21 @@ func (d Device) HasTag(tag string) bool {
 	return false
 }
 
-func GetDevices(tsApiKey, tailnet string) ([]Device, error) {
+func GetNodes(tsApiKey, tailnet string) ([]Node, error) {
 	url := fmt.Sprintf("%s/api/v2/tailnet/%s/devices", baseURL, tailnet)
 
 	body, err := sendRequest(tsApiKey, tailnet, "GET", url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get devices: %w", err)
+		return nil, fmt.Errorf("failed to get nodes: %w", err)
 	}
 
-	var userDevices UserDevices
-	err = json.Unmarshal(body, &userDevices)
+	var userNodes UserNodes
+	err = json.Unmarshal(body, &userNodes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal devices: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal nodes: %w", err)
 	}
 
-	return userDevices.Devices, nil
+	return userNodes.Nodes, nil
 }
 
 func GetPolicy(tsApiKey, tailnet string) (Policy, error) {
@@ -216,98 +216,93 @@ func UpdatePolicy(tsApiKey, tailnet string, config Policy) error {
 	return nil
 }
 
-func GetDevice(tsApiKey, id string) (Device, error) {
+func GetNode(tsApiKey, id string) (Node, error) {
 	url := fmt.Sprintf("%s/api/v2/device/%s", baseURL, id)
 
 	body, err := sendRequest(tsApiKey, "", "GET", url, nil)
 	if err != nil {
-		return Device{}, fmt.Errorf("failed to get device: %w", err)
+		return Node{}, fmt.Errorf("failed to get node: %w", err)
 	}
 
-	var device Device
-	err = json.Unmarshal(body, &device)
+	var node Node
+	err = json.Unmarshal(body, &node)
 	if err != nil {
-		return Device{}, fmt.Errorf("failed to unmarshal device: %w", err)
+		return Node{}, fmt.Errorf("failed to unmarshal node: %w", err)
 	}
 
-	return device, nil
+	return node, nil
 }
 
-func DeleteDevice(tsApiKey, id string) error {
+func DeleteNode(tsApiKey, id string) error {
 	url := fmt.Sprintf("%s/api/v2/device/%s", baseURL, id)
 
 	_, err := sendRequest(tsApiKey, "", "DELETE", url, nil)
 	if err != nil {
-		return fmt.Errorf("failed to delete device: %w", err)
+		return fmt.Errorf("failed to delete node: %w", err)
 	}
 
 	return nil
 }
 
-func FindDeviceByHostname(tsApiKey, hostname, tailnet string) (Device, error) {
-	devices, err := GetDevices(tsApiKey, tailnet)
+func FindNodeByHostname(tsApiKey, hostname, tailnet string) (Node, error) {
+	nodes, err := GetNodes(tsApiKey, tailnet)
 	if err != nil {
-		return Device{}, fmt.Errorf("failed to get devices: %w", err)
+		return Node{}, fmt.Errorf("failed to get nodes: %w", err)
 	}
 
 	if err != nil {
-		return Device{}, fmt.Errorf("failed to unmarshal devices: %w", err)
+		return Node{}, fmt.Errorf("failed to unmarshal nodes: %w", err)
 	}
 
-	for _, device := range devices {
-		if device.Hostname == hostname {
-			return device, nil
+	for _, node := range nodes {
+		if node.Hostname == hostname {
+			return node, nil
 		}
 	}
 
-	return Device{}, fmt.Errorf("device with hostname %s not found", hostname)
+	return Node{}, fmt.Errorf("node with hostname %s not found", hostname)
 }
 
-func FindDevicesByHostname(tsApiKey, tailnet string, hostnames []string) ([]Device, error) {
-	devices, err := GetDevices(tsApiKey, tailnet)
+func FindNodesByHostname(tsApiKey, tailnet string, hostnames []string) ([]Node, error) {
+	nodes, err := GetNodes(tsApiKey, tailnet)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get devices: %w", err)
+		return nil, fmt.Errorf("failed to get nodes: %w", err)
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal devices: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal nodes: %w", err)
 	}
 
-	var foundDevices []Device
-	for _, device := range devices {
+	var foundNodes []Node
+	for _, node := range nodes {
 		for _, hostname := range hostnames {
-			if device.Hostname == hostname {
-				foundDevices = append(foundDevices, device)
+			if node.Hostname == hostname {
+				foundNodes = append(foundNodes, node)
 			}
 		}
 	}
 
-	return foundDevices, nil
+	return foundNodes, nil
 }
 
-func FindActiveXitDevices(tsApiKey, tailnet string) ([]Device, error) {
-	devices, err := GetDevices(tsApiKey, tailnet)
+func FindActiveXitNodes(tsApiKey, tailnet string) ([]Node, error) {
+	nodes, err := GetNodes(tsApiKey, tailnet)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get devices: %w", err)
+		return nil, fmt.Errorf("failed to get nodes: %w", err)
 	}
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal devices: %w", err)
-	}
-
-	var foundDevices []Device
-	for _, device := range devices {
-		lastSeen, err := time.Parse(time.RFC3339, device.LastSeen)
+	var foundNodes []Node
+	for _, node := range nodes {
+		lastSeen, err := time.Parse(time.RFC3339, node.LastSeen)
 		if err != nil {
 			fmt.Println("Failed to parse lastSeen:", err)
 			return nil, err
 		}
-		if device.HasTag("tag:xit") && time.Since(lastSeen) < 5*time.Minute {
-			foundDevices = append(foundDevices, device)
+		if node.HasTag("tag:xit") && time.Since(lastSeen) < 10*time.Minute {
+			foundNodes = append(foundNodes, node)
 		}
 	}
 
-	return foundDevices, nil
+	return foundNodes, nil
 }
 
 // Function that uses promptui to return an AWS region fetched from the aws sdk
