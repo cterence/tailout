@@ -39,10 +39,10 @@ jobs:
       matrix:
         include:
           - first_command: "xit init"
-          - first_command: "xit run"
+          - first_command: "xit create"
             second_command: "xit status"
             third_command: "xit disconnect"
-          - first_command: "xit run"
+          - first_command: "xit create"
             second_command: "xit disconnect"
             third_command: "xit status"
     steps:
