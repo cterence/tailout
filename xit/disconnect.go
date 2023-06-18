@@ -6,11 +6,10 @@ import (
 	"os/exec"
 
 	"github.com/cterence/xit/internal"
-	"github.com/spf13/viper"
 )
 
 func (app *App) Disconnect() error {
-	nonInteractive := viper.GetBool("non_interactive")
+	nonInteractive := app.Config.NonInteractive
 
 	var status internal.TailscaleStatus
 

@@ -8,15 +8,15 @@ on:
     types: [opened, synchronize, reopened]
 
 env:
-  BINARY_PATH: bin/xit
+  BINARY_NAME: xit
   # xit environment variables
   XIT_REGION: eu-west-3
   XIT_NON_INTERACTIVE: "true"
-  XIT_CONNECT: "true"
+  XIT_CREATE_CONNECT: "true"
   XIT_SHUTDOWN: 5m
-  XIT_TS_TAILNET: ${{ secrets.TS_TAILNET }}
-  XIT_TS_API_KEY: ${{ secrets.TS_API_KEY }}
-  XIT_TS_AUTH_KEY: ${{ secrets.TS_AUTH_KEY }}
+  XIT_TAILSCALE_TAILNET: ${{ secrets.TAILSCALE_TAILNET }}
+  XIT_TAILSCALE_API_KEY: ${{ secrets.TAILSCALE_API_KEY }}
+  XIT_TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
 
 permissions:
   id-token: write # This is required for requesting the JWT
@@ -30,12 +30,13 @@ jobs:
       - name: Build xit
         uses: ./.github/actions/build
         with:
-          binary_path: ${{ env.BINARY_PATH }}
+          binary_name: ${{ env.BINARY_NAME }}
 
   e2e-tests:
     runs-on: ubuntu-latest
     needs: build
     strategy:
+      fail-fast: false
       matrix:
         include:
           - first_command: "xit init"
@@ -52,8 +53,8 @@ jobs:
         with:
           region: ${{ env.XIT_REGION }}
           role_arn: ${{ secrets.AWS_GITHUB_ACTIONS_XIT_ROLE_ARN }}
-          tailscale_authkey: ${{ secrets.TS_GITHUB_ACTIONS_AUTH_KEY }}
-          binary_path: ${{ env.BINARY_PATH }}
+          tailscale_authkey: ${{ secrets.TAILSCALE_GITHUB_ACTIONS_AUTH_KEY }}
+          binary_name: ${{ env.BINARY_NAME }}
       - name: First command
         run: ${{ matrix.first_command }}
       - name: Second command
@@ -78,8 +79,8 @@ jobs:
         with:
           region: ${{ env.XIT_REGION }}
           role_arn: ${{ secrets.AWS_GITHUB_ACTIONS_XIT_ROLE_ARN }}
-          tailscale_authkey: ${{ secrets.TS_GITHUB_ACTIONS_AUTH_KEY }}
-          binary_path: ${{ env.BINARY_PATH }}
+          tailscale_authkey: ${{ secrets.TAILSCALE_GITHUB_ACTIONS_AUTH_KEY }}
+          binary_name: ${{ env.BINARY_NAME }}
       - name: Cleanup
         run: xit stop --all
       # TODO: Add cleanup for github nodes as well
