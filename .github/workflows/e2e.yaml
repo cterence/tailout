@@ -8,7 +8,7 @@ on:
     types: [opened, synchronize, reopened]
 
 env:
-  BINARY_NAME: xit
+  BINARY_PATH: bin/xit
   # xit environment variables
   XIT_REGION: eu-west-3
   XIT_NON_INTERACTIVE: "true"
@@ -30,7 +30,7 @@ jobs:
       - name: Build xit
         uses: ./.github/actions/build
         with:
-          binary_name: ${{ env.BINARY_NAME }}
+          binary_path: ${{ env.BINARY_PATH }}
 
   e2e-tests:
     runs-on: ubuntu-latest
@@ -53,7 +53,7 @@ jobs:
           region: ${{ env.XIT_REGION }}
           role_arn: ${{ secrets.AWS_GITHUB_ACTIONS_XIT_ROLE_ARN }}
           tailscale_authkey: ${{ secrets.TS_GITHUB_ACTIONS_AUTH_KEY }}
-          binary_name: ${{ env.BINARY_NAME }}
+          binary_path: ${{ env.BINARY_PATH }}
       - name: First command
         run: ${{ matrix.first_command }}
       - name: Second command
@@ -79,7 +79,7 @@ jobs:
           region: ${{ env.XIT_REGION }}
           role_arn: ${{ secrets.AWS_GITHUB_ACTIONS_XIT_ROLE_ARN }}
           tailscale_authkey: ${{ secrets.TS_GITHUB_ACTIONS_AUTH_KEY }}
-          binary_name: ${{ env.BINARY_NAME }}
+          binary_path: ${{ env.BINARY_PATH }}
       - name: Cleanup
         run: xit stop --all
       # TODO: Add cleanup for github nodes as well
