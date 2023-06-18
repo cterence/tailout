@@ -129,15 +129,18 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 - Region: %s
 - Shutdown: %s
 - Connect: %v
-- Network: default VPC / Subnet / Security group of the region`, *identity.Account, imageID, instanceType, region, shutdown, connect)
+- Network: default VPC / Subnet / Security group of the region
+`, *identity.Account, imageID, instanceType, region, shutdown, connect)
 
-	result, err := internal.PromptYesNo("Do you want to create this instance?")
-	if err != nil {
-		return fmt.Errorf("failed to prompt for confirmation: %w", err)
-	}
+	if !nonInteractive {
+		result, err := internal.PromptYesNo("Do you want to create this instance?")
+		if err != nil {
+			return fmt.Errorf("failed to prompt for confirmation: %w", err)
+		}
 
-	if !result {
-		return nil
+		if !result {
+			return nil
+		}
 	}
 
 	// Run the EC2 instance

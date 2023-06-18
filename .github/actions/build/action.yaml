@@ -2,19 +2,19 @@ name: build
 description: Build the go binary
 
 inputs:
-  binary_path:
-    description: The path of the binary to build
+  binary_name:
+    description: The name of the binary to build
     required: true
-    default: "bin/xit"
+    default: "xit"
 
 runs:
   using: "composite"
   steps:
-    - name: Build ${{ inputs.binary_path }}
-      run: go build -o ${{ inputs.binary_path }}
+    - name: Build ${{ inputs.binary_name }}
+      run: go build -o bin/${{ inputs.binary_name }}
       shell: bash
-    - name: Upload ${{ inputs.binary_path }} binary
+    - name: Upload ${{ inputs.binary_name }} binary
       uses: actions/upload-artifact@v3
       with:
-        name: ${{ inputs.binary_path }}
-        path: ${{ inputs.binary_path }}
+        name: ${{ inputs.binary_name }}
+        path: bin/${{ inputs.binary_name }}
