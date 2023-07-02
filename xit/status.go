@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/cterence/xit/internal"
+	"github.com/cterence/xit/xit/config"
+	"github.com/cterence/xit/xit/tailscale"
 )
 
 func (app *App) Status() error {
-	tsApiKey := app.Config.Tailscale.APIKey
-	tailnet := app.Config.Tailscale.Tailnet
+	c := tailscale.NewClient(&app.Config.Tailscale)
 
-	nodes, err := internal.FindActiveXitNodes(tsApiKey, tailnet)
+	nodes, err := c.GetActiveXitNodes()
 	if err != nil {
 		return fmt.Errorf("failed to get nodes: %w", err)
 	}
@@ -23,13 +23,13 @@ func (app *App) Status() error {
 		return fmt.Errorf("failed to get tailscale preferences: %w", err)
 	}
 
-	var status internal.TailscaleStatus
-	var currentNode internal.Node
+	var status config.TailscaleStatus
+	var currentNode config.Node
 
 	json.Unmarshal(out, &status)
 
 	if status.ExitNodeID != "" {
-		currentNode, err = internal.GetNode(tsApiKey, status.ExitNodeID)
+		currentNode, err = c.GetNode(status.ExitNodeID)
 		if err != nil {
 			return fmt.Errorf("failed to get node: %w", err)
 		}

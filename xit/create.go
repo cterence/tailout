@@ -12,21 +12,21 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/cterence/xit/internal"
+	"github.com/cterence/xit/xit/tailscale"
 )
 
 func (app *App) Create() error {
-	// Set up AWS session in the desired region
-
 	nonInteractive := app.Config.NonInteractive
 	region := app.Config.Region
 	tsAuthKey := app.Config.Tailscale.AuthKey
 	dryRun := app.Config.DryRun
-	tsApiKey := app.Config.Tailscale.APIKey
-	tailnet := app.Config.Tailscale.Tailnet
 
 	connect := app.Config.Create.Connect
 	shutdown := app.Config.Create.Shutdown
 
+	c := tailscale.NewClient(&app.Config.Tailscale)
+
+	// TODO: add option for no shutdown
 	duration, err := time.ParseDuration(shutdown)
 	if err != nil {
 		return fmt.Errorf("failed to parse duration: %w", err)
@@ -85,6 +85,7 @@ func (app *App) Create() error {
 	imageID := *latestAMI.ImageId
 
 	// Define the instance details
+	// TODO: add option for instance type
 	instanceType := "t3a.micro"
 	userDataScript := `#!/bin/bash
 # Allow ip forwarding
@@ -122,13 +123,13 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 		return fmt.Errorf("failed to get account ID: %w", err)
 	}
 
-	fmt.Printf(`Creating EC2 instance with the following parameters:
+	fmt.Printf(`Creating xit node in AWS with the following parameters:
 - AWS Account ID: %s
 - AMI ID: %s
 - Instance Type: %s
 - Region: %s
-- Shutdown: %s
-- Connect: %v
+- Auto shutdown after: %s
+- Connect after instance up: %v
 - Network: default VPC / Subnet / Security group of the region
 `, *identity.Account, imageID, instanceType, region, shutdown, connect)
 
@@ -203,7 +204,7 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 	timeout := time.Now().Add(2 * time.Minute)
 
 	for {
-		nodes, err := internal.GetNodes(tsApiKey, tailnet)
+		nodes, err := c.GetNodes()
 		if err != nil {
 			return fmt.Errorf("failed to get nodes: %w", err)
 		}

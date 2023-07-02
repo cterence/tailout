@@ -8,19 +8,21 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/cterence/xit/internal"
+	"github.com/cterence/xit/xit/config"
+	"github.com/cterence/xit/xit/tailscale"
 	"github.com/ktr0731/go-fuzzyfinder"
 )
 
 func (app *App) Stop(args []string) error {
-	tsApiKey := app.Config.Tailscale.APIKey
-	tailnet := app.Config.Tailscale.Tailnet
 	nonInteractive := app.Config.NonInteractive
 	dryRun := app.Config.DryRun
 	stopAll := app.Config.Stop.All
 
-	var nodesToStop []internal.Node
+	c := tailscale.NewClient(&app.Config.Tailscale)
 
-	xitNodes, err := internal.FindActiveXitNodes(tsApiKey, tailnet)
+	var nodesToStop []config.Node
+
+	xitNodes, err := c.GetActiveXitNodes()
 	if err != nil {
 		return fmt.Errorf("failed to find active xit nodes: %w", err)
 	}
@@ -39,13 +41,13 @@ func (app *App) Stop(args []string) error {
 			return fmt.Errorf("failed to find node: %w", err)
 		}
 
-		nodesToStop = []internal.Node{}
+		nodesToStop = []config.Node{}
 		for _, i := range idx {
 			nodesToStop = append(nodesToStop, xitNodes[i])
 		}
 	} else {
 		if !stopAll {
-			nodesToStop = []internal.Node{}
+			nodesToStop = []config.Node{}
 			for _, node := range xitNodes {
 				for _, arg := range args {
 					if node.Hostname == arg {
@@ -107,7 +109,7 @@ func (app *App) Stop(args []string) error {
 
 		fmt.Println("Successfully terminated instance", Node.Hostname)
 
-		err = internal.DeleteNode(tsApiKey, Node.ID)
+		err = c.DeleteNode(Node.ID)
 		if err != nil {
 			return fmt.Errorf("failed to delete node from tailnet: %w", err)
 		}

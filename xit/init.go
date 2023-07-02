@@ -5,21 +5,23 @@ import (
 	"fmt"
 
 	"github.com/cterence/xit/internal"
+	"github.com/cterence/xit/xit/config"
+	"github.com/cterence/xit/xit/tailscale"
 )
 
 func (app *App) Init() error {
-	tsApiKey := app.Config.Tailscale.APIKey
-	tailnet := app.Config.Tailscale.Tailnet
 	dryRun := app.Config.DryRun
 	nonInteractive := app.Config.NonInteractive
 
+	c := tailscale.NewClient(&app.Config.Tailscale)
+
 	// Get the policy configuration
-	policy, err := internal.GetPolicy(tsApiKey, tailnet)
+	policy, err := c.GetPolicy()
 	if err != nil {
 		return fmt.Errorf("failed to get policy: %w", err)
 	}
 
-	allowXitSSH := internal.SSHConfiguration{
+	allowXitSSH := config.SSHConfiguration{
 		Action: "check",
 		Src:    []string{"autogroup:members"},
 		Dst:    []string{"tag:xit"},
@@ -60,7 +62,7 @@ func (app *App) Init() error {
 	}
 
 	// Validate the updated policy configuration
-	err = internal.ValidatePolicy(tsApiKey, tailnet, policy)
+	err = c.ValidatePolicy(policy)
 	if err != nil {
 		return fmt.Errorf("failed to validate policy: %w", err)
 	}
@@ -95,7 +97,7 @@ Your new policy document will look like this:
 			}
 		}
 
-		err = internal.UpdatePolicy(tsApiKey, tailnet, policy)
+		err = c.UpdatePolicy(policy)
 		if err != nil {
 			return fmt.Errorf("failed to update policy: %w", err)
 		}

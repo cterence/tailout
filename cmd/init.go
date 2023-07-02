@@ -9,8 +9,8 @@ func buildInitCommand(app *xit.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Args:  cobra.NoArgs,
 		Use:   "init",
-		Short: "Initialize your tailnet's policy for xit",
-		Long: `Initialize your tailnet's policy for xit.
+		Short: "Initialize tailnet policy for xit",
+		Long: `Initialize tailnet policy for xit.
 		
 	 This command will update your tailnet policy by:
 	 - adding a new tag 'tag:xit',
