@@ -6,13 +6,16 @@ inputs:
     description: The name of the binary to build
     required: true
     default: "xit"
-  tailscale_authkey:
-    description: The tailscale authkey to use
+  tailscale_oauth_client_id:
+    description: The tailscale oauth client id
+    required: true
+  tailscale_oauth_client_secret:
+    description: The tailscale oauth client secret
     required: true
   tailscale_version:
     description: The version of tailscale to use
     required: false
-    default: "1.42.0"
+    default: "1.44.0"
   role_arn:
     description: The role to assume
     required: true
@@ -30,17 +33,17 @@ runs:
         role-session-name: xit-${{ github.job }}
         aws-region: ${{ inputs.region }}
     - name: Connect runner to tailscale
-      uses: tailscale/github-action@v1
+      uses: tailscale/github-action@v2
       with:
-        authkey: ${{ inputs.tailscale_authkey }}
+        oauth-client-id: ${{ inputs.tailscale_oauth_client_id }}
+        oauth-secret: ${{ inputs.tailscale_oauth_client_secret }}
         version: ${{ inputs.tailscale_version }}
+        tags: tag:github-actions-runner
     - name: Download ${{ inputs.binary_name }} binary
       uses: actions/download-artifact@v3
       with:
         name: ${{ inputs.binary_name }}
         path: bin/
-    - run: ls -R
-      shell: bash
     - name: Make ${{ inputs.binary_name }} executable
       run: chmod +x bin/${{ inputs.binary_name }}
       shell: bash

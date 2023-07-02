@@ -53,7 +53,8 @@ jobs:
         with:
           region: ${{ env.XIT_REGION }}
           role_arn: ${{ secrets.AWS_GITHUB_ACTIONS_XIT_ROLE_ARN }}
-          tailscale_authkey: ${{ secrets.TAILSCALE_GITHUB_ACTIONS_AUTH_KEY }}
+          tailscale_oauth_client_id: ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
+          tailscale_oauth_client_secret: ${{ secrets.TAILSCALE_OAUTH_CLIENT_SECRET }}
           binary_name: ${{ env.BINARY_NAME }}
       - name: First command
         run: ${{ matrix.first_command }}
@@ -79,7 +80,8 @@ jobs:
         with:
           region: ${{ env.XIT_REGION }}
           role_arn: ${{ secrets.AWS_GITHUB_ACTIONS_XIT_ROLE_ARN }}
-          tailscale_authkey: ${{ secrets.TAILSCALE_GITHUB_ACTIONS_AUTH_KEY }}
+          tailscale_oauth_client_id: ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
+          tailscale_oauth_client_secret: ${{ secrets.TAILSCALE_OAUTH_CLIENT_SECRET }}
           binary_name: ${{ env.BINARY_NAME }}
       - name: Cleanup
         run: xit stop --all
