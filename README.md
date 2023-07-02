@@ -2,14 +2,16 @@
 
 `tailout` is a command-line tool for quickly creating a cloud-based exit node in your tailnet.
 
+![demo gif](./docs/demo.gif)
+
 ## Installation
 
 To install `tailout`, you can download the latest release from the [releases page](https://github.com/cterence/tailout/releases).
 
 You can also use the `go install` command:
 
-```
-$ go install github.com/cterence/tailout
+```bash
+go install github.com/cterence/tailout
 ```
 
 ## Prerequisites
@@ -23,7 +25,7 @@ At the moment, `tailout` only supports AWS as a cloud provider. Support for othe
 
 ## Setup
 
-`tailout init` will initialize `tailout` and create a configuration file in `~/.tailout/config.yaml`. You can edit this file to change the default configuration for `tailout`.
+`tailout init` will initialize `tailout` by editing your Tailnet policy.
 
 You will also need to set up your AWS credentials. tailout will look for default credentials, like environment variables for access keys or an AWS profile.
 
@@ -33,26 +35,32 @@ To easily check if your credentials are set up correctly, you can use the `aws s
 
 Create an exit node in your tailnet:
 
-```
+```bash
 tailout create
 ```
 
 Connect to your exit node:
 
-```
+```bash
 tailout connect
 ```
 
 Get the status of your exit node:
 
-```
+```bash
 tailout status
 ```
 
 Disconnect from your exit node:
 
-```
+```bash
 tailout disconnect
+```
+
+Delete your exit node:
+
+```bash
+tailout stop
 ```
 
 ## Configuration

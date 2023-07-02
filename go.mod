@@ -2,8 +2,6 @@ module github.com/cterence/tailout
 
 go 1.20
 
-retract v0.1.0 // bad module path
-
 require (
 	github.com/adhocore/chin v1.1.0
 	github.com/aws/aws-sdk-go v1.44.294
