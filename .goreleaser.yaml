@@ -14,12 +14,7 @@ builds:
     main: ./
     binary: tailout
 archives:
-  - replacements:
-      darwin: Darwin
-      linux: Linux
-      386: i386
-      amd64: x86_64
-    format_overrides:
+  - format_overrides:
       - goos: windows
         format: zip
 checksum:
