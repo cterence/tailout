@@ -30,7 +30,7 @@ runs:
         role-session-name: xit-${{ github.job }}
         aws-region: ${{ inputs.region }}
     - name: Connect runner to tailscale
-      uses: tailscale/github-action@v1
+      uses: tailscale/github-action@v2
       with:
         authkey: ${{ inputs.tailscale_authkey }}
         version: ${{ inputs.tailscale_version }}
