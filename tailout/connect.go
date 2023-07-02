@@ -1,10 +1,10 @@
-package xit
+package tailout
 
 import (
 	"fmt"
 
-	"github.com/cterence/xit/internal"
-	"github.com/cterence/xit/xit/tailscale"
+	"github.com/cterence/tailout/internal"
+	"github.com/cterence/tailout/tailout/tailscale"
 	"github.com/manifoldco/promptui"
 )
 
@@ -19,11 +19,11 @@ func (app *App) Connect(args []string) error {
 	} else if !nonInteractive {
 		xitNodes, err := c.GetActiveXitNodes()
 		if err != nil {
-			return fmt.Errorf("failed to find active xit nodes: %w", err)
+			return err
 		}
 
 		if len(xitNodes) == 0 {
-			return fmt.Errorf("no xit node found in your tailnet")
+			return fmt.Errorf("no tailout node found in your tailnet")
 		}
 
 		// Use promptui to select a node

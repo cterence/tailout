@@ -1,11 +1,11 @@
 name: setup
-description: Setup the environment for xit
+description: Setup the environment for tailout
 
 inputs:
   binary_name:
     description: The name of the binary to build
     required: true
-    default: "xit"
+    default: "tailout"
   tailscale_oauth_client_id:
     description: The tailscale oauth client id
     required: true
@@ -30,7 +30,7 @@ runs:
       uses: aws-actions/configure-aws-credentials@v2
       with:
         role-to-assume: ${{ inputs.role_arn }}
-        role-session-name: xit-${{ github.job }}
+        role-session-name: tailout-${{ github.job }}
         aws-region: ${{ inputs.region }}
     - name: Connect runner to tailscale
       uses: tailscale/github-action@v2

@@ -1,20 +1,20 @@
 package cmd
 
 import (
-	"github.com/cterence/xit/xit"
+	"github.com/cterence/tailout/tailout"
 	"github.com/spf13/cobra"
 )
 
-func buildStatusCommand(app *xit.App) *cobra.Command {
+func buildStatusCommand(app *tailout.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Args:  cobra.NoArgs,
 		Use:   "status",
-		Short: "Show xit-related informations",
-		Long: `Show xit-related informations.
+		Short: "Show tailout-related informations",
+		Long: `Show tailout-related informations.
 		
-		This command will show the status of xit nodes, including the node name and whether it is connected or not.
+		This command will show the status of tailout nodes, including the node name and whether it is connected or not.
 		
-		Example : xit status`,
+		Example : tailout status`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := app.Status()
 			if err != nil {

@@ -1,4 +1,4 @@
-package xit
+package tailout
 
 import (
 	"encoding/base64"
@@ -11,20 +11,22 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/sts"
-	"github.com/cterence/xit/internal"
-	"github.com/cterence/xit/xit/tailscale"
+	"github.com/cterence/tailout/internal"
+	"github.com/cterence/tailout/tailout/tailscale"
 )
 
 func (app *App) Create() error {
 	nonInteractive := app.Config.NonInteractive
 	region := app.Config.Region
-	tsAuthKey := app.Config.Tailscale.AuthKey
 	dryRun := app.Config.DryRun
-
 	connect := app.Config.Create.Connect
 	shutdown := app.Config.Create.Shutdown
 
 	c := tailscale.NewClient(&app.Config.Tailscale)
+
+	if app.Config.Tailscale.AuthKey == "" {
+		return fmt.Errorf("no tailscale auth key found")
+	}
 
 	// TODO: add option for no shutdown
 	duration, err := time.ParseDuration(shutdown)
@@ -96,7 +98,7 @@ sudo sysctl -p /etc/sysctl.conf
 export INSTANCE_ID=$(curl http://169.254.169.254/latest/meta-data/instance-id)
 
 curl -fsSL https://tailscale.com/install.sh | sh
-sudo tailscale up --auth-key=` + tsAuthKey + ` --hostname=xit-` + region + `-$INSTANCE_ID --advertise-exit-node --ssh
+sudo tailscale up --auth-key=` + app.Config.Tailscale.AuthKey + ` --hostname=tailout-` + region + `-$INSTANCE_ID --advertise-exit-node --ssh
 sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes`
 
 	// Encode the string in base64
@@ -123,7 +125,7 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 		return fmt.Errorf("failed to get account ID: %w", err)
 	}
 
-	fmt.Printf(`Creating xit node in AWS with the following parameters:
+	fmt.Printf(`Creating tailout node in AWS with the following parameters:
 - AWS Account ID: %s
 - AMI ID: %s
 - Instance Type: %s
@@ -157,13 +159,13 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 
 	createdInstance := runResult.Instances[0]
 	fmt.Println("EC2 instance created successfully:", *createdInstance.InstanceId)
-	nodeName := fmt.Sprintf("xit-%s-%s", region, *createdInstance.InstanceId)
+	nodeName := fmt.Sprintf("tailout-%s-%s", region, *createdInstance.InstanceId)
 	fmt.Println("Instance will be named", nodeName)
 	// Create tags for the instance
 	tags := []*ec2.Tag{
 		{
 			Key:   aws.String("App"),
-			Value: aws.String("xit"),
+			Value: aws.String("tailout"),
 		},
 	}
 
@@ -206,7 +208,7 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 	for {
 		nodes, err := c.GetNodes()
 		if err != nil {
-			return fmt.Errorf("failed to get nodes: %w", err)
+			return err
 		}
 
 		for _, node := range nodes {

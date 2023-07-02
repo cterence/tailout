@@ -1,12 +1,12 @@
-package xit
+package tailout
 
 import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
 
-	"github.com/cterence/xit/xit/config"
-	"github.com/cterence/xit/xit/tailscale"
+	"github.com/cterence/tailout/tailout/config"
+	"github.com/cterence/tailout/tailout/tailscale"
 )
 
 func (app *App) Status() error {
@@ -14,7 +14,7 @@ func (app *App) Status() error {
 
 	nodes, err := c.GetActiveXitNodes()
 	if err != nil {
-		return fmt.Errorf("failed to get nodes: %w", err)
+		return err
 	}
 
 	out, err := exec.Command("tailscale", "debug", "prefs").CombinedOutput()
@@ -36,9 +36,9 @@ func (app *App) Status() error {
 	}
 
 	if len(nodes) == 0 {
-		fmt.Println("No active node created by xit found.")
+		fmt.Println("No active node created by tailout found.")
 	} else {
-		fmt.Println("Active nodes created by xit:")
+		fmt.Println("Active nodes created by tailout:")
 		for _, node := range nodes {
 			if currentNode.Hostname == node.Hostname {
 				fmt.Println("-", node.Hostname, "[Connected]")

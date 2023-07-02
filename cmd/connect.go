@@ -1,12 +1,12 @@
 package cmd
 
 import (
-	"github.com/cterence/xit/xit"
+	"github.com/cterence/tailout/tailout"
 	"github.com/spf13/cobra"
 )
 
 // connectCmd represents the connect command
-func buildConnectCommand(app *xit.App) *cobra.Command {
+func buildConnectCommand(app *tailout.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Args:  cobra.NoArgs,
 		Use:   "connect",

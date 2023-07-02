@@ -1,4 +1,4 @@
-module github.com/cterence/xit
+module github.com/cterence/tailout
 
 go 1.20
 

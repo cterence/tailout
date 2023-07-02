@@ -3,8 +3,8 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-bin = "./tmp/xit"
-cmd = "go mod tidy && go build -o ./tmp/xit ."
+bin = "./tmp/tailout"
+cmd = "go mod tidy && go build -o ./tmp/tailout ."
 delay = 1000
 exclude_dir = ["assets", "tmp", "vendor", "testdata"]
 exclude_file = []

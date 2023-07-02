@@ -148,14 +148,14 @@ type UserNodes struct {
 func (c *Config) Load(flags *pflag.FlagSet, cmdName string) error {
 	v := viper.New()
 
-	// Xit looks for configuration files called config.yaml, config.json,
+	// Tailout looks for configuration files called config.yaml, config.json,
 	// config.toml, config.hcl, etc.
 	v.SetConfigName("config")
 
-	// Xit looks for configuration files in the common configuration
+	// Tailout looks for configuration files in the common configuration
 	// directories.
-	v.AddConfigPath("/etc/xit/")
-	v.AddConfigPath("$HOME/.xit/")
+	v.AddConfigPath("/etc/tailout/")
+	v.AddConfigPath("$HOME/.tailout/")
 
 	// Viper logs the configuration file it uses, if any.
 	err := v.ReadInConfig()
@@ -165,9 +165,9 @@ func (c *Config) Load(flags *pflag.FlagSet, cmdName string) error {
 		}
 	}
 
-	// Xit can be configured with environment variables that start with
-	// XIT_.
-	v.SetEnvPrefix("xit")
+	// Tailout can be configured with environment variables that start with
+	// TAILOUT_.
+	v.SetEnvPrefix("tailout")
 	v.AutomaticEnv()
 
 	// Options with dashes in flag names have underscores when set inside a

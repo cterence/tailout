@@ -1,21 +1,21 @@
 package cmd
 
 import (
-	"github.com/cterence/xit/xit"
+	"github.com/cterence/tailout/tailout"
 	"github.com/spf13/cobra"
 )
 
-func buildInitCommand(app *xit.App) *cobra.Command {
+func buildInitCommand(app *tailout.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Args:  cobra.NoArgs,
 		Use:   "init",
-		Short: "Initialize tailnet policy for xit",
-		Long: `Initialize tailnet policy for xit.
+		Short: "Initialize tailnet policy for tailout",
+		Long: `Initialize tailnet policy for tailout.
 		
 	 This command will update your tailnet policy by:
-	 - adding a new tag 'tag:xit',
-	 - adding exit nodes tagged with 'tag:xit to auto approvers',
-	 - allowing your tailnet devices to SSH into xit nodes.`,
+	 - adding a new tag 'tag:tailout',
+	 - adding exit nodes tagged with 'tag:tailout to auto approvers',
+	 - allowing your tailnet devices to SSH into tailout nodes.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := app.Init()
 			if err != nil {

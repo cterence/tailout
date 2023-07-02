@@ -5,7 +5,7 @@ inputs:
   binary_name:
     description: The name of the binary to build
     required: true
-    default: "xit"
+    default: "tailout"
 
 runs:
   using: "composite"

@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/cterence/xit/xit/config"
+	"github.com/cterence/tailout/tailout/config"
 	"github.com/tailscale/hujson"
 )
 
@@ -93,19 +93,18 @@ func (c *Client) DeleteNode(id string) error {
 func (c *Client) GetActiveXitNodes() ([]config.Node, error) {
 	nodes, err := c.GetNodes()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get nodes: %w", err)
+		return nil, fmt.Errorf("failed to get active tailout nodes: %w", err)
 	}
 	var foundNodes []config.Node
 	for _, node := range nodes {
 		lastSeen, err := time.Parse(time.RFC3339, node.LastSeen)
 		if err != nil {
-			fmt.Println("Failed to parse lastSeen:", err)
 			return nil, err
 		}
 
 		hasTag := false
 		for _, t := range node.Tags {
-			if t == "tag:xit" {
+			if t == "tag:tailout" {
 				hasTag = true
 			}
 		}
@@ -123,7 +122,7 @@ func (c *Client) GetPolicy() (config.Policy, error) {
 
 	body, err := sendTailscaleAPIRequest(c, "GET", url, nil)
 	if err != nil {
-		return config.Policy{}, fmt.Errorf("failed to get ACL: %w", err)
+		return config.Policy{}, fmt.Errorf("failed to get policy: %w", err)
 	}
 
 	standardBody, err := hujson.Standardize(body)

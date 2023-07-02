@@ -4,7 +4,7 @@ before:
 builds:
   - env:
       - CGO_ENABLED=0
-      - PACKAGE=github.com/cterence/xit
+      - PACKAGE=github.com/cterence/tailout
     ldflags:
       - -X ${PACKAGE}/internal/version.Version=${VERSION}
       - -X ${PACKAGE}/internal/version.CommitHash=${COMMIT_HASH}
@@ -12,7 +12,7 @@ builds:
     goos:
       - linux
     main: ./
-    binary: xit
+    binary: tailout
 archives:
   - replacements:
       darwin: Darwin

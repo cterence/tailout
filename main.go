@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/cterence/xit/cmd"
-	"github.com/cterence/xit/xit"
+	"github.com/cterence/tailout/cmd"
+	"github.com/cterence/tailout/tailout"
 )
 
 func main() {
-	app, err := xit.New()
+	app, err := tailout.New()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %s\n", err)
 		os.Exit(1)

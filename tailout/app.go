@@ -1,10 +1,10 @@
-package xit
+package tailout
 
 import (
 	"io"
 	"os"
 
-	"github.com/cterence/xit/xit/config"
+	"github.com/cterence/tailout/tailout/config"
 )
 
 type App struct {

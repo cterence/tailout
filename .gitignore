@@ -20,7 +20,7 @@
 # Go workspace file
 go.work*
 
-.xit.yaml
+.tailout.yaml
 config.yaml
 
 tmp/

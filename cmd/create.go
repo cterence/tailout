@@ -1,12 +1,12 @@
 package cmd
 
 import (
-	"github.com/cterence/xit/xit"
+	"github.com/cterence/tailout/tailout"
 	"github.com/spf13/cobra"
 )
 
 // createCmd represents the create command
-func buildCreateCommand(app *xit.App) *cobra.Command {
+func buildCreateCommand(app *tailout.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Args:  cobra.NoArgs,
 		Use:   "create",
@@ -18,7 +18,7 @@ func buildCreateCommand(app *xit.App) *cobra.Command {
  - t3a.micro instance type
  - Tailscale installed and configured to advertise as an exit node
  - SSH access enabled
- - Tagged with App=xit
+ - Tagged with App=tailout
  - The instance will be created as a spot instance in the default VPC`,
 
 		RunE: func(cmd *cobra.Command, args []string) error {

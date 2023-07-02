@@ -1,12 +1,12 @@
-package xit
+package tailout
 
 import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/cterence/xit/internal"
-	"github.com/cterence/xit/xit/config"
-	"github.com/cterence/xit/xit/tailscale"
+	"github.com/cterence/tailout/internal"
+	"github.com/cterence/tailout/tailout/config"
+	"github.com/cterence/tailout/tailout/tailscale"
 )
 
 func (app *App) Init() error {
@@ -18,40 +18,40 @@ func (app *App) Init() error {
 	// Get the policy configuration
 	policy, err := c.GetPolicy()
 	if err != nil {
-		return fmt.Errorf("failed to get policy: %w", err)
+		return err
 	}
 
 	allowXitSSH := config.SSHConfiguration{
 		Action: "check",
 		Src:    []string{"autogroup:members"},
-		Dst:    []string{"tag:xit"},
+		Dst:    []string{"tag:tailout"},
 		Users:  []string{"autogroup:nonroot", "root"},
 	}
 
 	xitSSHConfigExists, xitTagExists, xitAutoApproversExists := false, false, false
 
 	for _, sshConfig := range policy.SSH {
-		if sshConfig.Action == "check" && sshConfig.Src[0] == "autogroup:members" && sshConfig.Dst[0] == "tag:xit" && sshConfig.Users[0] == "autogroup:nonroot" && sshConfig.Users[1] == "root" {
+		if sshConfig.Action == "check" && sshConfig.Src[0] == "autogroup:members" && sshConfig.Dst[0] == "tag:tailout" && sshConfig.Users[0] == "autogroup:nonroot" && sshConfig.Users[1] == "root" {
 			xitSSHConfigExists = true
 		}
 	}
 
-	if policy.TagOwners["tag:xit"] != nil {
-		fmt.Println("Tag 'tag:xit' already exists.")
+	if policy.TagOwners["tag:tailout"] != nil {
+		fmt.Println("Tag 'tag:tailout' already exists.")
 		xitTagExists = true
 	} else {
-		policy.TagOwners["tag:xit"] = []string{}
+		policy.TagOwners["tag:tailout"] = []string{}
 	}
 
 	if policy.AutoApprovers.ExitNode != nil {
-		fmt.Println("Auto approvers for tag:xit nodes already exists.")
+		fmt.Println("Auto approvers for tag:tailout nodes already exists.")
 		xitAutoApproversExists = true
 	} else {
-		policy.AutoApprovers.ExitNode = []string{"tag:xit"}
+		policy.AutoApprovers.ExitNode = []string{"tag:tailout"}
 	}
 
 	if xitSSHConfigExists {
-		fmt.Println("SSH configuration for xit already exists.")
+		fmt.Println("SSH configuration for tailout already exists.")
 	} else {
 		policy.SSH = append(policy.SSH, allowXitSSH)
 	}
@@ -76,9 +76,9 @@ func (app *App) Init() error {
 	// Make a prompt to show the update that will be done
 	fmt.Printf(`
 The following update to the policy will be done:
-- Add tag:xit to tagOwners
-- Update auto approvers to allow exit nodes tagged with tag:xit
-- Add a SSH configuration allowing users to SSH into tagged xit nodes
+- Add tag:tailout to tagOwners
+- Update auto approvers to allow exit nodes tagged with tag:tailout
+- Add a SSH configuration allowing users to SSH into tagged tailout nodes
 
 Your new policy document will look like this:
 %s

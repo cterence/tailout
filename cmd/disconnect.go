@@ -1,12 +1,12 @@
 package cmd
 
 import (
-	"github.com/cterence/xit/xit"
+	"github.com/cterence/tailout/tailout"
 	"github.com/spf13/cobra"
 )
 
 // disconnectCmd represents the disconnect command
-func buildDisconnectCommand(app *xit.App) *cobra.Command {
+func buildDisconnectCommand(app *tailout.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Args:  cobra.NoArgs,
 		Use:   "disconnect",

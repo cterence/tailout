@@ -1,6 +1,6 @@
 package tailscale
 
-import "github.com/cterence/xit/xit/config"
+import "github.com/cterence/tailout/tailout/config"
 
 type Client struct {
 	config *config.TailscaleConfig

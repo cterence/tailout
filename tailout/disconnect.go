@@ -1,12 +1,12 @@
-package xit
+package tailout
 
 import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
 
-	"github.com/cterence/xit/internal"
-	"github.com/cterence/xit/xit/config"
+	"github.com/cterence/tailout/internal"
+	"github.com/cterence/tailout/tailout/config"
 )
 
 func (app *App) Disconnect() error {

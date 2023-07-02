@@ -1,81 +1,79 @@
-# xit
+# tailout
 
-`xit` is a command-line tool for quickly creating a cloud-based exit node in your tailnet.
+`tailout` is a command-line tool for quickly creating a cloud-based exit node in your tailnet.
 
 ## Installation
 
-To install `xit`, you can use the `go get` command:
+To install `tailout`, you can download the latest release from the [releases page](https://github.com/cterence/tailout/releases).
+
+You can also use the `go install` command:
 
 ```
-$ go install github.com/cterence/xit
+$ go install github.com/cterence/tailout
 ```
 
 ## Prerequisites
 
-To use `xit`, you'll need to have the following installed:
+To use `tailout`, you'll need to have the following installed:
 
 - [Tailscale](https://tailscale.com/)
-- [AWS CLI](https://aws.amazon.com/cli/)
+- An AWS account
+
+At the moment, `tailout` only supports AWS as a cloud provider. Support for other cloud providers will be added in the future.
 
 ## Setup
 
-Before creating exit nodes, you'll need to initialize your tailnet using the `xit init` command.
+`tailout init` will initialize `tailout` and create a configuration file in `~/.tailout/config.yaml`. You can edit this file to change the default configuration for `tailout`.
+
+You will also need to set up your AWS credentials. tailout will look for default credentials, like environment variables for access keys or an AWS profile.
+
+To easily check if your credentials are set up correctly, you can use the `aws sts get-caller-identity` command. If you see an error, you'll need to set up your credentials.
 
 ## Usage
 
-To use `xit`, you can run the `xit create` command to create a new exit node:
+Create an exit node in your tailnet:
 
 ```
-$ xit create
+tailout create
 ```
 
-This will create a new exit node in your tailnet using the default configuration.
-
-You can also specify a configuration file using the `--config` flag:
+Connect to your exit node:
 
 ```
-$ xit create --config /path/to/config.yaml
+tailout connect
 ```
 
-This will create a new exit node using the configuration specified in the `config.yaml` file.
-
-To stop an exit node, you can run the `xit stop` command:
+Get the status of your exit node:
 
 ```
-$ xit stop
+tailout status
 ```
 
-This will stop the exit node running on the current machine.
-
-You can also specify one or more exit nodes to stop by specifying their hostnames:
+Disconnect from your exit node:
 
 ```
-$ xit stop hostname1 hostname2 ...
+tailout disconnect
 ```
-
-This will stop the exit nodes with the specified hostnames.
 
 ## Configuration
 
-`xit` uses a YAML configuration file to specify the settings for the exit node. Here's an example configuration file:
+`tailout` will look for a configuration file at the following paths:
+
+- `/etc/tailout/config.{yml,yaml,hcl,json,toml}`
+- `$HOME/.tailout/config.{yml,yaml,hcl,json,toml}`
+
+For exemple, you could have this content in `/etc/tailout/config.yml`:
 
 ```yaml
-***REMOVED***
-  authkey: <your tailscale authkey>
-  subnet: 10.0.0.0/24
-  hostname: my-exit-node
-
-cloud:
-  provider: aws
-  region: us-west-2
-  instance_type: t2.micro
-  ami: ami-0c55b159cbfafe1f0
+tailscale:
+  api_key: tskey-api-xxx-xxx
+  auth_key: tskey-auth-xxx-xxx
+  tailnet: <your tailnet name>
+region: eu-west-3
+create:
+  shutdown: 15m
 ```
 
-This configuration file specifies the Tailscale authentication key, the subnet to use for the exit node, the hostname of the exit node, and the cloud provider, region, instance type, and AMI to use for the exit node.
+You can specify any of the above settings as command-line flags or environment variables prefixed by `TAILOUT_`.
 
-You can specify a different configuration file using the `--config` flag when running the `xit create` command.
-
-## License
-
-`xit` is licensed under the MIT License. See the LICENSE file for more information.
+For example, to specify the Tailscale API key, you can use the `--tailscale-api-key` flag or the `TAILOUT_TAILSCALE_API_KEY` environment variable.

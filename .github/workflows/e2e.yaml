@@ -8,15 +8,15 @@ on:
     types: [opened, synchronize, reopened]
 
 env:
-  BINARY_NAME: xit
-  # xit environment variables
-  XIT_REGION: eu-west-3
-  XIT_NON_INTERACTIVE: "true"
-  XIT_CREATE_CONNECT: "true"
-  XIT_SHUTDOWN: 5m
-  XIT_TAILSCALE_TAILNET: ${{ secrets.TAILSCALE_TAILNET }}
-  XIT_TAILSCALE_API_KEY: ${{ secrets.TAILSCALE_API_KEY }}
-  XIT_TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
+  BINARY_NAME: tailout
+  # tailout environment variables
+  TAILOUT_REGION: eu-west-3
+  TAILOUT_NON_INTERACTIVE: "true"
+  TAILOUT_CREATE_CONNECT: "true"
+  TAILOUT_SHUTDOWN: 5m
+  TAILOUT_TAILSCALE_TAILNET: ${{ secrets.TAILSCALE_TAILNET }}
+  TAILOUT_TAILSCALE_API_KEY: ${{ secrets.TAILSCALE_API_KEY }}
+  TAILOUT_TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
 
 permissions:
   id-token: write # This is required for requesting the JWT
@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Build xit
+      - name: Build tailout
         uses: ./.github/actions/build
         with:
           binary_name: ${{ env.BINARY_NAME }}
@@ -39,20 +39,20 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - first_command: "xit init"
-          - first_command: "xit create"
-            second_command: "xit status"
-            third_command: "xit disconnect"
-          - first_command: "xit create"
-            second_command: "xit disconnect"
-            third_command: "xit status"
+          - first_command: "tailout init"
+          - first_command: "tailout create"
+            second_command: "tailout status"
+            third_command: "tailout disconnect"
+          - first_command: "tailout create"
+            second_command: "tailout disconnect"
+            third_command: "tailout status"
     steps:
       - uses: actions/checkout@v3
       - name: Setup environment
         uses: ./.github/actions/setup
         with:
-          region: ${{ env.XIT_REGION }}
-          role_arn: ${{ secrets.AWS_GITHUB_ACTIONS_XIT_ROLE_ARN }}
+          region: ${{ env.TAILOUT_REGION }}
+          role_arn: ${{ secrets.AWS_GITHUB_ACTIONS_TAILOUT_ROLE_ARN }}
           tailscale_oauth_client_id: ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
           tailscale_oauth_client_secret: ${{ secrets.TAILSCALE_OAUTH_CLIENT_SECRET }}
           binary_name: ${{ env.BINARY_NAME }}
@@ -78,11 +78,11 @@ jobs:
       - name: Setup environment
         uses: ./.github/actions/setup
         with:
-          region: ${{ env.XIT_REGION }}
-          role_arn: ${{ secrets.AWS_GITHUB_ACTIONS_XIT_ROLE_ARN }}
+          region: ${{ env.TAILOUT_REGION }}
+          role_arn: ${{ secrets.AWS_GITHUB_ACTIONS_TAILOUT_ROLE_ARN }}
           tailscale_oauth_client_id: ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
           tailscale_oauth_client_secret: ${{ secrets.TAILSCALE_OAUTH_CLIENT_SECRET }}
           binary_name: ${{ env.BINARY_NAME }}
       - name: Cleanup
-        run: xit stop --all
+        run: tailout stop --all
       # TODO: Add cleanup for github nodes as well

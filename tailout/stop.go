@@ -1,4 +1,4 @@
-package xit
+package tailout
 
 import (
 	"fmt"
@@ -7,9 +7,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/cterence/xit/internal"
-	"github.com/cterence/xit/xit/config"
-	"github.com/cterence/xit/xit/tailscale"
+	"github.com/cterence/tailout/internal"
+	"github.com/cterence/tailout/tailout/config"
+	"github.com/cterence/tailout/tailout/tailscale"
 	"github.com/ktr0731/go-fuzzyfinder"
 )
 
@@ -24,16 +24,16 @@ func (app *App) Stop(args []string) error {
 
 	xitNodes, err := c.GetActiveXitNodes()
 	if err != nil {
-		return fmt.Errorf("failed to find active xit nodes: %w", err)
+		return err
 	}
 
 	if len(xitNodes) == 0 {
-		fmt.Println("No xit node found in your tailnet")
+		fmt.Println("No tailout node found in your tailnet")
 		return nil
 	}
 
 	if len(args) == 0 && !nonInteractive && !stopAll {
-		// Create a fuzzy finder selector with the xit nodes
+		// Create a fuzzy finder selector with the tailout nodes
 		idx, err := fuzzyfinder.FindMulti(xitNodes, func(i int) string {
 			return xitNodes[i].Hostname
 		})
@@ -77,7 +77,7 @@ func (app *App) Stop(args []string) error {
 		}
 	}
 
-	// TODO: cleanup xit instances that were not last seen recently
+	// TODO: cleanup tailout instances that were not last seen recently
 	// TODO: warning when stopping a deice to which you are connected, propose to disconnect before
 	for _, Node := range nodesToStop {
 		fmt.Println("Stopping", Node.Hostname)

@@ -1,17 +1,17 @@
 package cmd
 
 import (
-	"github.com/cterence/xit/xit"
+	"github.com/cterence/tailout/tailout"
 	"github.com/spf13/cobra"
 )
 
-func New(app *xit.App) *cobra.Command {
+func New(app *tailout.App) *cobra.Command {
 	return buildXitCommand(app)
 }
 
-func buildXitCommand(app *xit.App) *cobra.Command {
+func buildXitCommand(app *tailout.App) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "xit",
+		Use:          "tailout",
 		Short:        "Quickly create a cloud-based exit node in your tailnet",
 		SilenceUsage: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
