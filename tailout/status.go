@@ -12,7 +12,7 @@ import (
 func (app *App) Status() error {
 	c := tailscale.NewClient(&app.Config.Tailscale)
 
-	nodes, err := c.GetActiveXitNodes()
+	nodes, err := c.GetActiveNodes()
 	if err != nil {
 		return err
 	}

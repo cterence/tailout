@@ -90,7 +90,7 @@ func (c *Client) DeleteNode(id string) error {
 	return nil
 }
 
-func (c *Client) GetActiveXitNodes() ([]config.Node, error) {
+func (c *Client) GetActiveNodes() ([]config.Node, error) {
 	nodes, err := c.GetNodes()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get active tailout nodes: %w", err)

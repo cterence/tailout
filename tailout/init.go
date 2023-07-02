@@ -21,42 +21,46 @@ func (app *App) Init() error {
 		return err
 	}
 
-	allowXitSSH := config.SSHConfiguration{
+	allowTailoutSSH := config.SSHConfiguration{
 		Action: "check",
 		Src:    []string{"autogroup:members"},
 		Dst:    []string{"tag:tailout"},
 		Users:  []string{"autogroup:nonroot", "root"},
 	}
 
-	xitSSHConfigExists, xitTagExists, xitAutoApproversExists := false, false, false
+	tailoutSSHConfigExists, tailoutTagExists, tailoutAutoApproversExists := false, false, false
 
 	for _, sshConfig := range policy.SSH {
 		if sshConfig.Action == "check" && sshConfig.Src[0] == "autogroup:members" && sshConfig.Dst[0] == "tag:tailout" && sshConfig.Users[0] == "autogroup:nonroot" && sshConfig.Users[1] == "root" {
-			xitSSHConfigExists = true
+			tailoutSSHConfigExists = true
 		}
 	}
 
 	if policy.TagOwners["tag:tailout"] != nil {
 		fmt.Println("Tag 'tag:tailout' already exists.")
-		xitTagExists = true
+		tailoutTagExists = true
 	} else {
 		policy.TagOwners["tag:tailout"] = []string{}
 	}
 
-	if policy.AutoApprovers.ExitNode != nil {
-		fmt.Println("Auto approvers for tag:tailout nodes already exists.")
-		xitAutoApproversExists = true
-	} else {
-		policy.AutoApprovers.ExitNode = []string{"tag:tailout"}
+	for _, exitNode := range policy.AutoApprovers.ExitNode {
+		if exitNode == "tag:tailout" {
+			fmt.Println("Auto approvers for tag:tailout nodes already exists.")
+			tailoutAutoApproversExists = true
+		}
 	}
 
-	if xitSSHConfigExists {
+	if !tailoutAutoApproversExists {
+		policy.AutoApprovers.ExitNode = append(policy.AutoApprovers.ExitNode, "tag:tailout")
+	}
+
+	if tailoutSSHConfigExists {
 		fmt.Println("SSH configuration for tailout already exists.")
 	} else {
-		policy.SSH = append(policy.SSH, allowXitSSH)
+		policy.SSH = append(policy.SSH, allowTailoutSSH)
 	}
 
-	if xitTagExists && xitAutoApproversExists && xitSSHConfigExists && !dryRun {
+	if tailoutTagExists && tailoutAutoApproversExists && tailoutSSHConfigExists && !dryRun {
 		fmt.Println("Nothing to do.")
 		return nil
 	}

@@ -6,10 +6,10 @@ import (
 )
 
 func New(app *tailout.App) *cobra.Command {
-	return buildXitCommand(app)
+	return buildTailoutCommand(app)
 }
 
-func buildXitCommand(app *tailout.App) *cobra.Command {
+func buildTailoutCommand(app *tailout.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "tailout",
 		Short:        "Quickly create a cloud-based exit node in your tailnet",

@@ -17,19 +17,19 @@ func (app *App) Connect(args []string) error {
 	if len(args) != 0 {
 		nodeConnect = args[0]
 	} else if !nonInteractive {
-		xitNodes, err := c.GetActiveXitNodes()
+		tailoutNodes, err := c.GetActiveNodes()
 		if err != nil {
 			return err
 		}
 
-		if len(xitNodes) == 0 {
+		if len(tailoutNodes) == 0 {
 			return fmt.Errorf("no tailout node found in your tailnet")
 		}
 
 		// Use promptui to select a node
 		prompt := promptui.Select{
 			Label: "Select a node",
-			Items: xitNodes,
+			Items: tailoutNodes,
 			Templates: &promptui.SelectTemplates{
 				Label:    "{{ . }}",
 				Active:   "{{ .Hostname | cyan }}",
@@ -43,7 +43,7 @@ func (app *App) Connect(args []string) error {
 			return fmt.Errorf("failed to select node: %w", err)
 		}
 
-		nodeConnect = xitNodes[idx].Hostname
+		nodeConnect = tailoutNodes[idx].Hostname
 	} else {
 		return fmt.Errorf("no node name provided")
 	}

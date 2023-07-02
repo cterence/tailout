@@ -22,20 +22,20 @@ func (app *App) Stop(args []string) error {
 
 	var nodesToStop []config.Node
 
-	xitNodes, err := c.GetActiveXitNodes()
+	tailoutNodes, err := c.GetActiveNodes()
 	if err != nil {
 		return err
 	}
 
-	if len(xitNodes) == 0 {
+	if len(tailoutNodes) == 0 {
 		fmt.Println("No tailout node found in your tailnet")
 		return nil
 	}
 
 	if len(args) == 0 && !nonInteractive && !stopAll {
 		// Create a fuzzy finder selector with the tailout nodes
-		idx, err := fuzzyfinder.FindMulti(xitNodes, func(i int) string {
-			return xitNodes[i].Hostname
+		idx, err := fuzzyfinder.FindMulti(tailoutNodes, func(i int) string {
+			return tailoutNodes[i].Hostname
 		})
 		if err != nil {
 			return fmt.Errorf("failed to find node: %w", err)
@@ -43,12 +43,12 @@ func (app *App) Stop(args []string) error {
 
 		nodesToStop = []config.Node{}
 		for _, i := range idx {
-			nodesToStop = append(nodesToStop, xitNodes[i])
+			nodesToStop = append(nodesToStop, tailoutNodes[i])
 		}
 	} else {
 		if !stopAll {
 			nodesToStop = []config.Node{}
-			for _, node := range xitNodes {
+			for _, node := range tailoutNodes {
 				for _, arg := range args {
 					if node.Hostname == arg {
 						nodesToStop = append(nodesToStop, node)
@@ -56,7 +56,7 @@ func (app *App) Stop(args []string) error {
 				}
 			}
 		} else {
-			nodesToStop = xitNodes
+			nodesToStop = tailoutNodes
 		}
 	}
 
