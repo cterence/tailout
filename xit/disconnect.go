@@ -6,12 +6,13 @@ import (
 	"os/exec"
 
 	"github.com/cterence/xit/internal"
+	"github.com/cterence/xit/xit/config"
 )
 
 func (app *App) Disconnect() error {
 	nonInteractive := app.Config.NonInteractive
 
-	var status internal.TailscaleStatus
+	var status config.TailscaleStatus
 
 	out, err := exec.Command("tailscale", "debug", "prefs").CombinedOutput()
 	if err != nil {

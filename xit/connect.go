@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cterence/xit/internal"
+	"github.com/cterence/xit/xit/tailscale"
 	"github.com/manifoldco/promptui"
 )
 
@@ -11,13 +12,12 @@ func (app *App) Connect(args []string) error {
 	var nodeConnect string
 
 	nonInteractive := app.Config.NonInteractive
-	tsApiKey := app.Config.Tailscale.APIKey
-	tailnet := app.Config.Tailscale.Tailnet
+	c := tailscale.NewClient(&app.Config.Tailscale)
 
 	if len(args) != 0 {
 		nodeConnect = args[0]
 	} else if !nonInteractive {
-		xitNodes, err := internal.FindActiveXitNodes(tsApiKey, tailnet)
+		xitNodes, err := c.GetActiveXitNodes()
 		if err != nil {
 			return fmt.Errorf("failed to find active xit nodes: %w", err)
 		}

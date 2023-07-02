@@ -1,8 +1,6 @@
 package config
 
 import (
-	"fmt"
-	"os"
 	"reflect"
 	"strings"
 
@@ -35,6 +33,118 @@ type StopConfig struct {
 	All bool `mapstructure:"all"`
 }
 
+type Policy struct {
+	ACLs                []ACL               `json:"acls,omitempty"`
+	Hosts               map[string]string   `json:"hosts,omitempty"`
+	Groups              map[string][]string `json:"groups,omitempty"`
+	Tests               []Test              `json:"tests,omitempty"`
+	TagOwners           map[string][]string `json:"tagOwners,omitempty"`
+	AutoApprovers       AutoApprovers       `json:"autoApprovers,omitempty"`
+	SSH                 []SSHConfiguration  `json:"ssh,omitempty"`
+	DerpMap             DerpMap             `json:"derpMap,omitempty"`
+	DisableIPv4         bool                `json:"disableIPv4,omitempty"`
+	RandomizeClientPort bool                `json:"randomizeClientPort,omitempty"`
+}
+
+type ACL struct {
+	Action string   `json:"action,omitempty"`
+	Src    []string `json:"src,omitempty"`
+	Dst    []string `json:"dst,omitempty"`
+	Proto  string   `json:"proto,omitempty"`
+}
+
+type Test struct {
+	Src    string   `json:"src,omitempty"`
+	Accept []string `json:"accept,omitempty"`
+	Deny   []string `json:"deny,omitempty"`
+}
+
+type AutoApprovers struct {
+	Routes   map[string][]string `json:"routes,omitempty"`
+	ExitNode []string            `json:"exitNode,omitempty"`
+}
+
+type SSHConfiguration struct {
+	Action string   `json:"action,omitempty"`
+	Src    []string `json:"src,omitempty"`
+	Dst    []string `json:"dst,omitempty"`
+	Users  []string `json:"users,omitempty"`
+}
+
+type DerpMap struct {
+	Regions map[string]DerpRegion `json:"regions,omitempty"`
+}
+
+type DerpRegion struct {
+	RegionID int    `json:"regionID,omitempty"`
+	HostName string `json:"hostName,omitempty"`
+}
+
+type Node struct {
+	Addresses                 []string `json:"addresses"`
+	Authorized                bool     `json:"authorized"`
+	BlocksIncomingConnections bool     `json:"blocksIncomingConnections"`
+	ClientVersion             string   `json:"clientVersion"`
+	Created                   string   `json:"created"`
+	Expires                   string   `json:"expires"`
+	Hostname                  string   `json:"hostname"`
+	ID                        string   `json:"id"`
+	IsExternal                bool     `json:"isExternal"`
+	KeyExpiryDisabled         bool     `json:"keyExpiryDisabled"`
+	LastSeen                  string   `json:"lastSeen"`
+	MachineKey                string   `json:"NodeKey,omitempty"`
+	Name                      string   `json:"name,omitempty"`
+	NodeID                    string   `json:"nodeId"`
+	NodeKey                   string   `json:"nodeKey"`
+	OS                        string   `json:"os"`
+	TailnetLockError          string   `json:"tailnetLockError,omitempty"`
+	TailnetLockKey            string   `json:"tailnetLockKey,omitempty"`
+	UpdateAvailable           bool     `json:"updateAvailable"`
+	User                      string   `json:"user,omitempty"`
+	Tags                      []string `json:"tags,omitempty"`
+}
+
+type TailscaleStatus struct {
+	ControlURL             string `json:"ControlURL"`
+	RouteAll               bool   `json:"RouteAll"`
+	AllowSingleHosts       bool   `json:"AllowSingleHosts"`
+	ExitNodeID             string `json:"ExitNodeID"`
+	ExitNodeIP             string `json:"ExitNodeIP"`
+	ExitNodeAllowLANAccess bool   `json:"ExitNodeAllowLANAccess"`
+	CorpDNS                bool   `json:"CorpDNS"`
+	RunSSH                 bool   `json:"RunSSH"`
+	WantRunning            bool   `json:"WantRunning"`
+	LoggedOut              bool   `json:"LoggedOut"`
+	ShieldsUp              bool   `json:"ShieldsUp"`
+	AdvertiseTags          string `json:"AdvertiseTags"`
+	Hostname               string `json:"Hostname"`
+	NotepadURLs            bool   `json:"NotepadURLs"`
+	AdvertiseRoutes        string `json:"AdvertiseRoutes"`
+	NoSNAT                 bool   `json:"NoSNAT"`
+	NetfilterMode          int    `json:"NetfilterMode"`
+	Config                 struct {
+		PrivateMachineKey string `json:"PrivateMachineKey"`
+		PrivateNodeKey    string `json:"PrivateNodeKey"`
+		OldPrivateNodeKey string `json:"OldPrivateNodeKey"`
+		Provider          string `json:"Provider"`
+		LoginName         string `json:"LoginName"`
+		UserProfile       struct {
+			ID            int64    `json:"ID"`
+			LoginName     string   `json:"LoginName"`
+			DisplayName   string   `json:"DisplayName"`
+			ProfilePicURL string   `json:"ProfilePicURL"`
+			Roles         []string `json:"Roles"`
+		} `json:"UserProfile"`
+		NetworkLockKey string `json:"NetworkLockKey"`
+		NodeID         string `json:"NodeID"`
+	} `json:"Config"`
+}
+
+type UserNodes struct {
+	User  string `json:"user"`
+	Nodes []Node `json:"devices"`
+}
+
 func (c *Config) Load(flags *pflag.FlagSet, cmdName string) error {
 	v := viper.New()
 
@@ -48,8 +158,11 @@ func (c *Config) Load(flags *pflag.FlagSet, cmdName string) error {
 	v.AddConfigPath("$HOME/.xit/")
 
 	// Viper logs the configuration file it uses, if any.
-	if err := v.ReadInConfig(); err == nil {
-		fmt.Fprintf(os.Stderr, "Using config file: %s\n", v.ConfigFileUsed())
+	err := v.ReadInConfig()
+	if err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			return err
+		}
 	}
 
 	// Xit can be configured with environment variables that start with
