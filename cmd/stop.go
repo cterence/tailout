@@ -10,10 +10,10 @@ func buildStopCommand(app *tailout.App) *cobra.Command {
 		Use:   "stop [node names...]",
 		Args:  cobra.ArbitraryArgs,
 		Short: "Terminates instances created by tailout",
-		Long: `By default, terminates all instances created by tailout. 
-	
+		Long: `By default, terminates all instances created by tailout.
+
 	If one or more Node names are specified, only those instances will be terminated.
-	
+
 	Example : tailout stop tailout-eu-west-3-i-048afd4880f66c596`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := app.Stop(args)

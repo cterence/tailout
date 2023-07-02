@@ -11,7 +11,7 @@ func buildInitCommand(app *tailout.App) *cobra.Command {
 		Use:   "init",
 		Short: "Initialize tailnet policy for tailout",
 		Long: `Initialize tailnet policy for tailout.
-		
+
 	 This command will update your tailnet policy by:
 	 - adding a new tag 'tag:tailout',
 	 - adding exit nodes tagged with 'tag:tailout to auto approvers',

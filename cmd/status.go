@@ -11,9 +11,9 @@ func buildStatusCommand(app *tailout.App) *cobra.Command {
 		Use:   "status",
 		Short: "Show tailout-related informations",
 		Long: `Show tailout-related informations.
-		
+
 		This command will show the status of tailout nodes, including the node name and whether it is connected or not.
-		
+
 		Example : tailout status`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := app.Status()
