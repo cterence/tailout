@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/adhocore/chin v1.1.0
-	github.com/aws/aws-sdk-go v1.45.15
+	github.com/aws/aws-sdk-go v1.45.16
 	github.com/ktr0731/go-fuzzyfinder v0.7.0
 	github.com/manifoldco/promptui v0.9.0
 	github.com/spf13/cobra v1.7.0
