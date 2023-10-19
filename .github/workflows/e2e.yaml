@@ -26,7 +26,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Build tailout
         uses: ./.github/actions/build
         with:
@@ -47,7 +47,7 @@ jobs:
             second_command: "tailout disconnect"
             third_command: "tailout status"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup environment
         uses: ./.github/actions/setup
         with:
@@ -74,7 +74,7 @@ jobs:
       group: cleanup
       cancel-in-progress: true
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup environment
         uses: ./.github/actions/setup
         with:
