@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-sdk-go v1.47.3
 	github.com/ktr0731/go-fuzzyfinder v0.7.0
 	github.com/manifoldco/promptui v0.9.0
-	github.com/spf13/cobra v1.7.0
+	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.17.0
 	github.com/tailscale/hujson v0.0.0-20221223112325-20486734a56a
