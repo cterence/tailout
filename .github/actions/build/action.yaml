@@ -14,7 +14,7 @@ runs:
       run: go build -o bin/${{ inputs.binary_name }}
       shell: bash
     - name: Upload ${{ inputs.binary_name }} binary
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ inputs.binary_name }}
         path: bin/${{ inputs.binary_name }}
