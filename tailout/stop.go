@@ -78,7 +78,7 @@ func (app *App) Stop(args []string) error {
 	}
 
 	// TODO: cleanup tailout instances that were not last seen recently
-	// TODO: warning when stopping a deice to which you are connected, propose to disconnect before
+	// TODO: warning when stopping a device to which you are connected, propose to disconnect before
 	for _, Node := range nodesToStop {
 		fmt.Println("Stopping", Node.Hostname)
 
