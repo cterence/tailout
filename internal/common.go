@@ -20,24 +20,31 @@ const (
 	baseURL = "https://api.tailscale.com"
 )
 
-// Function that uses promptui to return an AWS region fetched from the aws sdk
-func SelectRegion() (string, error) {
+func GetRegions() ([]string, error) {
 	sess, err := session.NewSession(&aws.Config{})
 	if err != nil {
-		fmt.Println("Failed to create session:", err)
-		return "", err
+		return nil, fmt.Errorf("failed to create session: %w", err)
 	}
 
 	svc := ec2.New(sess, aws.NewConfig().WithRegion("us-east-1"))
 	regions, err := svc.DescribeRegions(&ec2.DescribeRegionsInput{})
 	if err != nil {
-		fmt.Println("Failed to describe regions:", err)
-		return "", err
+		return nil, fmt.Errorf("failed to describe regions: %w", err)
 	}
 
 	regionNames := []string{}
 	for _, region := range regions.Regions {
 		regionNames = append(regionNames, *region.RegionName)
+	}
+
+	return regionNames, nil
+}
+
+// Function that uses promptui to return an AWS region fetched from the aws sdk
+func SelectRegion() (string, error) {
+	regionNames, err := GetRegions()
+	if err != nil {
+		return "", fmt.Errorf("Failed to retrieve regions: %w", err)
 	}
 
 	sort.Slice(regionNames, func(i, j int) bool {
