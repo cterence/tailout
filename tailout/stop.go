@@ -3,6 +3,7 @@ package tailout
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -78,18 +79,30 @@ func (app *App) Stop(args []string) error {
 	}
 
 	// TODO: cleanup tailout instances that were not last seen recently
-	// TODO: warning when stopping a deice to which you are connected, propose to disconnect before
+	// TODO: warning when stopping a device to which you are connected, propose to disconnect before
 	for _, Node := range nodesToStop {
 		fmt.Println("Stopping", Node.Hostname)
+
+		regionNames, err := internal.GetRegions()
+		if err != nil {
+			return fmt.Errorf("failed to retrieve regions: %w", err)
+		}
+		var region string
+		for _, regionName := range regionNames {
+			if strings.Contains(Node.Hostname, regionName) {
+				region = regionName
+			}
+		}
+
+		if region == "" {
+			return fmt.Errorf("failed to extract region from node name")
+		}
 
 		// Create a session to share configuration, and load external configuration.
 		sess, err := session.NewSession(&aws.Config{})
 		if err != nil {
 			return fmt.Errorf("failed to create session: %w", err)
 		}
-
-		// Extract the region from the Node name with a regex
-		region := regexp.MustCompile(`(?i)(eu|us|ap|sa|ca|cn|me|af|us-gov|us-iso)-[a-z]{2,}-[0-9]`).FindString(Node.Hostname)
 
 		// Create EC2 service client
 		svc := ec2.New(sess, aws.NewConfig().WithRegion(region))
