@@ -40,7 +40,7 @@ runs:
         version: ${{ inputs.tailscale_version }}
         tags: tag:github-actions-runner
     - name: Download ${{ inputs.binary_name }} binary
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: ${{ inputs.binary_name }}
         path: bin/
