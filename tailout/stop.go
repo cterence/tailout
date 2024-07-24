@@ -1,15 +1,17 @@
 package tailout
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"regexp"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/cterence/tailout/internal"
-	"github.com/cterence/tailout/tailout/config"
+	tailoutConfig "github.com/cterence/tailout/tailout/config"
 	"github.com/cterence/tailout/tailout/tailscale"
 	"github.com/ktr0731/go-fuzzyfinder"
 )
@@ -21,7 +23,7 @@ func (app *App) Stop(args []string) error {
 
 	c := tailscale.NewClient(&app.Config.Tailscale)
 
-	var nodesToStop []config.Node
+	var nodesToStop []tailoutConfig.Node
 
 	tailoutNodes, err := c.GetActiveNodes()
 	if err != nil {
@@ -42,13 +44,13 @@ func (app *App) Stop(args []string) error {
 			return fmt.Errorf("failed to find node: %w", err)
 		}
 
-		nodesToStop = []config.Node{}
+		nodesToStop = []tailoutConfig.Node{}
 		for _, i := range idx {
 			nodesToStop = append(nodesToStop, tailoutNodes[i])
 		}
 	} else {
 		if !stopAll {
-			nodesToStop = []config.Node{}
+			nodesToStop = []tailoutConfig.Node{}
 			for _, node := range tailoutNodes {
 				for _, arg := range args {
 					if node.Hostname == arg {
@@ -99,21 +101,20 @@ func (app *App) Stop(args []string) error {
 		}
 
 		// Create a session to share configuration, and load external configuration.
-		sess, err := session.NewSession(&aws.Config{})
+		cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(region))
 		if err != nil {
-			return fmt.Errorf("failed to create session: %w", err)
+			log.Fatalf("unable to load SDK config, %v", err)
 		}
 
-		// Create EC2 service client
-		svc := ec2.New(sess, aws.NewConfig().WithRegion(region))
+		ec2Svc := ec2.NewFromConfig(cfg)
 
 		// Extract the instance ID from the Node name with a regex
 
 		instanceID := regexp.MustCompile(`i\-[a-z0-9]{17}$`).FindString(Node.Hostname)
 
-		_, err = svc.TerminateInstances(&ec2.TerminateInstancesInput{
+		_, err = ec2Svc.TerminateInstances(context.TODO(), &ec2.TerminateInstancesInput{
 			DryRun:      aws.Bool(dryRun),
-			InstanceIds: []*string{aws.String(instanceID)},
+			InstanceIds: []string{instanceID},
 		})
 
 		if err != nil {
