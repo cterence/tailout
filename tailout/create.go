@@ -1,16 +1,19 @@
 package tailout
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
 	"github.com/adhocore/chin"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/cterence/tailout/internal"
 	"github.com/cterence/tailout/tailout/tailscale"
 )
@@ -39,11 +42,6 @@ func (app *App) Create() error {
 		return fmt.Errorf("duration must be at least 1 minute")
 	}
 
-	sess, err := session.NewSession(&aws.Config{})
-	if err != nil {
-		return fmt.Errorf("failed to create session: %w", err)
-	}
-
 	// Create EC2 service client
 
 	if region == "" && !nonInteractive {
@@ -55,25 +53,28 @@ func (app *App) Create() error {
 		return fmt.Errorf("selected non-interactive mode but no region was explicitly specified")
 	}
 
-	svc := ec2.New(sess, aws.NewConfig().WithRegion(region))
-
-	// Filter to fetch the latest Ubuntu LTS AMI ID
-	amazonLinuxFilter := []*ec2.Filter{
-		{
-			Name:   aws.String("name"),
-			Values: []*string{aws.String("amzn2-ami-hvm-2.0.*-x86_64-gp2")},
-		},
-		{
-			Name:   aws.String("architecture"),
-			Values: []*string{aws.String("x86_64")},
-		},
+	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(region))
+	if err != nil {
+		log.Fatalf("unable to load SDK config, %v", err)
 	}
 
+	ec2Svc := ec2.NewFromConfig(cfg)
+
 	// DescribeImages to get the latest Amazon Linux AMI
-	amazonLinuxImages, err := svc.DescribeImages(&ec2.DescribeImagesInput{
-		Filters: amazonLinuxFilter,
-		Owners:  []*string{aws.String("amazon")},
+	amazonLinuxImages, err := ec2Svc.DescribeImages(context.TODO(), &ec2.DescribeImagesInput{
+		Filters: []types.Filter{
+			{
+				Name:   aws.String("name"),
+				Values: []string{"amzn2-ami-hvm-2.0.*-x86_64-gp2"},
+			},
+			{
+				Name:   aws.String("architecture"),
+				Values: []string{"x86_64"},
+			},
+		},
+		Owners: []string{"amazon"},
 	})
+
 	if err != nil {
 		return fmt.Errorf("failed to describe Amazon Linux images: %w", err)
 	}
@@ -107,20 +108,22 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 	// Create instance input parameters
 	runInput := &ec2.RunInstancesInput{
 		ImageId:      aws.String(imageID),
-		InstanceType: aws.String(instanceType),
-		MinCount:     aws.Int64(1),
-		MaxCount:     aws.Int64(1),
+		InstanceType: types.InstanceTypeT3aMicro,
+		MinCount:     aws.Int32(1),
+		MaxCount:     aws.Int32(1),
 		UserData:     aws.String(userDataScriptBase64),
 		DryRun:       aws.Bool(dryRun),
-		InstanceMarketOptions: &ec2.InstanceMarketOptionsRequest{
-			MarketType: aws.String(ec2.MarketTypeSpot),
-			SpotOptions: &ec2.SpotMarketOptions{
-				InstanceInterruptionBehavior: aws.String(ec2.InstanceInterruptionBehaviorTerminate),
+		InstanceMarketOptions: &types.InstanceMarketOptionsRequest{
+			MarketType: types.MarketTypeSpot,
+			SpotOptions: &types.SpotMarketOptions{
+				InstanceInterruptionBehavior: types.InstanceInterruptionBehaviorTerminate,
 			},
 		},
 	}
 
-	identity, err := sts.New(sess).GetCallerIdentity(&sts.GetCallerIdentityInput{})
+	stsSvc := sts.NewFromConfig(cfg)
+
+	identity, err := stsSvc.GetCallerIdentity(context.TODO(), &sts.GetCallerIdentityInput{})
 	if err != nil {
 		return fmt.Errorf("failed to get account ID: %w", err)
 	}
@@ -147,7 +150,7 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 	}
 
 	// Run the EC2 instance
-	runResult, err := svc.RunInstances(runInput)
+	runResult, err := ec2Svc.RunInstances(context.TODO(), runInput)
 	if err != nil {
 		return fmt.Errorf("failed to create EC2 instance: %w", err)
 	}
@@ -162,7 +165,7 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 	nodeName := fmt.Sprintf("tailout-%s-%s", region, *createdInstance.InstanceId)
 	fmt.Println("Instance will be named", nodeName)
 	// Create tags for the instance
-	tags := []*ec2.Tag{
+	tags := []types.Tag{
 		{
 			Key:   aws.String("App"),
 			Value: aws.String("tailout"),
@@ -170,8 +173,8 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 	}
 
 	// Add the tags to the instance
-	_, err = svc.CreateTags(&ec2.CreateTagsInput{
-		Resources: []*string{aws.String(*createdInstance.InstanceId)},
+	_, err = ec2Svc.CreateTags(context.TODO(), &ec2.CreateTagsInput{
+		Resources: []string{*createdInstance.InstanceId},
 		Tags:      tags,
 	})
 	if err != nil {
@@ -190,9 +193,9 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 	fmt.Println("Waiting for instance to be running...")
 
 	// Add a handler for the instance state change event
-	err = svc.WaitUntilInstanceRunning(&ec2.DescribeInstancesInput{
-		InstanceIds: []*string{aws.String(*createdInstance.InstanceId)},
-	})
+	err = ec2.NewInstanceExistsWaiter(ec2Svc).Wait(context.TODO(), &ec2.DescribeInstancesInput{
+		InstanceIds: []string{*createdInstance.InstanceId},
+	}, time.Minute*2)
 	if err != nil {
 		return fmt.Errorf("failed to wait for instance to be created: %w", err)
 	}
@@ -233,10 +236,10 @@ found:
 	}
 	// Get public IP address of created instance
 	describeInput := &ec2.DescribeInstancesInput{
-		InstanceIds: []*string{aws.String(*createdInstance.InstanceId)},
+		InstanceIds: []string{*createdInstance.InstanceId},
 	}
 
-	describeResult, err := svc.DescribeInstances(describeInput)
+	describeResult, err := ec2Svc.DescribeInstances(context.TODO(), describeInput)
 	if err != nil {
 		return fmt.Errorf("failed to describe EC2 instance: %w", err)
 	}
