@@ -2,17 +2,18 @@ package internal
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os/exec"
 	"regexp"
 	"sort"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/manifoldco/promptui"
 )
 
@@ -21,13 +22,13 @@ const (
 )
 
 func GetRegions() ([]string, error) {
-	sess, err := session.NewSession(&aws.Config{})
+	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-east-1"))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create session: %w", err)
+		log.Fatalf("unable to load SDK config, %v", err)
 	}
+	ec2Svc := ec2.NewFromConfig(cfg)
 
-	svc := ec2.New(sess, aws.NewConfig().WithRegion("us-east-1"))
-	regions, err := svc.DescribeRegions(&ec2.DescribeRegionsInput{})
+	regions, err := ec2Svc.DescribeRegions(context.TODO(), &ec2.DescribeRegionsInput{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to describe regions: %w", err)
 	}
@@ -44,7 +45,7 @@ func GetRegions() ([]string, error) {
 func SelectRegion() (string, error) {
 	regionNames, err := GetRegions()
 	if err != nil {
-		return "", fmt.Errorf("Failed to retrieve regions: %w", err)
+		return "", fmt.Errorf("failed to retrieve regions: %w", err)
 	}
 
 	sort.Slice(regionNames, func(i, j int) bool {

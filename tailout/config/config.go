@@ -156,6 +156,7 @@ func (c *Config) Load(flags *pflag.FlagSet, cmdName string) error {
 	// directories.
 	v.AddConfigPath("/etc/tailout/")
 	v.AddConfigPath("$HOME/.tailout/")
+	v.AddConfigPath(".")
 
 	// Viper logs the configuration file it uses, if any.
 	err := v.ReadInConfig()
