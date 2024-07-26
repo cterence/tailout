@@ -15,6 +15,7 @@ inputs:
   tailscale_version:
     description: The version of tailscale to use
     required: false
+    default: "1.70.0"
   role_arn:
     description: The role to assume
     required: true
