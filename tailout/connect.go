@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/netip"
+	"slices"
 
 	"github.com/cterence/tailout/internal"
 	"github.com/manifoldco/promptui"
@@ -25,14 +26,18 @@ func (app *App) Connect(args []string) error {
 
 	var deviceToConnectTo tsapi.Device
 
+	tailoutDevices, err := internal.GetActiveNodes(apiClient)
+	if err != nil {
+		fmt.Errorf("failed to get active nodes: %w", err)
+	}
+
 	if len(args) != 0 {
 		nodeConnect = args[0]
+		i := slices.IndexFunc(tailoutDevices, func(e tsapi.Device) bool {
+			return e.Hostname == nodeConnect
+		})
+		deviceToConnectTo = tailoutDevices[i]
 	} else if !nonInteractive {
-		tailoutDevices, err := internal.GetActiveNodes(apiClient)
-		if err != nil {
-			fmt.Errorf("failed to get active nodes: %w", err)
-		}
-
 		if len(tailoutDevices) == 0 {
 			return fmt.Errorf("no tailout node found in your tailnet")
 		}

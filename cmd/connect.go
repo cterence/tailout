@@ -8,7 +8,7 @@ import (
 // connectCmd represents the connect command
 func buildConnectCommand(app *tailout.App) *cobra.Command {
 	cmd := &cobra.Command{
-		Args:  cobra.NoArgs,
+		Args:  cobra.ArbitraryArgs,
 		Use:   "connect",
 		Short: "Connect to an exit node in your tailnet",
 		RunE: func(cmd *cobra.Command, args []string) error {
