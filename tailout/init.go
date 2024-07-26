@@ -1,49 +1,51 @@
 package tailout
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
 	"github.com/cterence/tailout/internal"
-	"github.com/cterence/tailout/tailout/config"
-	"github.com/cterence/tailout/tailout/tailscale"
+	tsapi "github.com/tailscale/tailscale-client-go/tailscale"
 )
 
 func (app *App) Init() error {
 	dryRun := app.Config.DryRun
 	nonInteractive := app.Config.NonInteractive
 
-	c := tailscale.NewClient(&app.Config.Tailscale)
-
-	// Get the policy configuration
-	policy, err := c.GetPolicy()
+	apiClient, err := tsapi.NewClient(app.Config.Tailscale.APIKey, app.Config.Tailscale.Tailnet)
+	if err != nil {
+		return fmt.Errorf("failed to create tailscale client: %w", err)
+	}
+	// Get the ACL configuration
+	acl, err := apiClient.ACL(context.TODO())
 	if err != nil {
 		return err
 	}
 
-	allowTailoutSSH := config.SSHConfiguration{
-		Action: "check",
-		Src:    []string{"autogroup:members"},
-		Dst:    []string{"tag:tailout"},
-		Users:  []string{"autogroup:nonroot", "root"},
+	allowTailoutSSH := tsapi.ACLSSH{
+		Action:      "check",
+		Source:      []string{"autogroup:members"},
+		Destination: []string{"tag:tailout"},
+		Users:       []string{"autogroup:nonroot", "root"},
 	}
 
 	tailoutSSHConfigExists, tailoutTagExists, tailoutAutoApproversExists := false, false, false
 
-	for _, sshConfig := range policy.SSH {
-		if sshConfig.Action == "check" && sshConfig.Src[0] == "autogroup:members" && sshConfig.Dst[0] == "tag:tailout" && sshConfig.Users[0] == "autogroup:nonroot" && sshConfig.Users[1] == "root" {
+	for _, sshConfig := range acl.SSH {
+		if sshConfig.Action == "check" && sshConfig.Source[0] == "autogroup:members" && sshConfig.Destination[0] == "tag:tailout" && sshConfig.Users[0] == "autogroup:nonroot" && sshConfig.Users[1] == "root" {
 			tailoutSSHConfigExists = true
 		}
 	}
 
-	if policy.TagOwners["tag:tailout"] != nil {
+	if acl.TagOwners["tag:tailout"] != nil {
 		fmt.Println("Tag 'tag:tailout' already exists.")
 		tailoutTagExists = true
 	} else {
-		policy.TagOwners["tag:tailout"] = []string{}
+		acl.TagOwners["tag:tailout"] = []string{}
 	}
 
-	for _, exitNode := range policy.AutoApprovers.ExitNode {
+	for _, exitNode := range acl.AutoApprovers.ExitNode {
 		if exitNode == "tag:tailout" {
 			fmt.Println("Auto approvers for tag:tailout nodes already exists.")
 			tailoutAutoApproversExists = true
@@ -51,13 +53,13 @@ func (app *App) Init() error {
 	}
 
 	if !tailoutAutoApproversExists {
-		policy.AutoApprovers.ExitNode = append(policy.AutoApprovers.ExitNode, "tag:tailout")
+		acl.AutoApprovers.ExitNode = append(acl.AutoApprovers.ExitNode, "tag:tailout")
 	}
 
 	if tailoutSSHConfigExists {
 		fmt.Println("SSH configuration for tailout already exists.")
 	} else {
-		policy.SSH = append(policy.SSH, allowTailoutSSH)
+		acl.SSH = append(acl.SSH, allowTailoutSSH)
 	}
 
 	if tailoutTagExists && tailoutAutoApproversExists && tailoutSSHConfigExists && !dryRun {
@@ -65,28 +67,28 @@ func (app *App) Init() error {
 		return nil
 	}
 
-	// Validate the updated policy configuration
-	err = c.ValidatePolicy(policy)
+	// Validate the updated acl configuration
+	err = apiClient.ValidateACL(context.TODO(), acl)
 	if err != nil {
-		return fmt.Errorf("failed to validate policy: %w", err)
+		return fmt.Errorf("failed to validate acl: %w", err)
 	}
 
-	// Update the policy configuration
-	policyJSON, err := json.MarshalIndent(policy, "", "  ")
+	// Update the acl configuration
+	aclJSON, err := json.MarshalIndent(acl, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal policy: %w", err)
+		return fmt.Errorf("failed to marshal acl: %w", err)
 	}
 
 	// Make a prompt to show the update that will be done
 	fmt.Printf(`
-The following update to the policy will be done:
+The following update to the acl will be done:
 - Add tag:tailout to tagOwners
 - Update auto approvers to allow exit nodes tagged with tag:tailout
 - Add a SSH configuration allowing users to SSH into tagged tailout nodes
 
-Your new policy document will look like this:
+Your new acl document will look like this:
 %s
-`, policyJSON)
+`, aclJSON)
 
 	if !dryRun {
 		if !nonInteractive {
@@ -101,14 +103,14 @@ Your new policy document will look like this:
 			}
 		}
 
-		err = c.UpdatePolicy(policy)
+		err = apiClient.SetACL(context.TODO(), acl)
 		if err != nil {
-			return fmt.Errorf("failed to update policy: %w", err)
+			return fmt.Errorf("failed to update acl: %w", err)
 		}
 
-		fmt.Println("Policy updated.")
+		fmt.Println("ACL updated.")
 	} else {
-		fmt.Println("Dry run, not updating policy.")
+		fmt.Println("Dry run, not updating acl.")
 	}
 	return nil
 }

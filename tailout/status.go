@@ -1,38 +1,42 @@
 package tailout
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"os/exec"
+	"io"
+	"net/http"
+	"net/netip"
+	"slices"
 
-	"github.com/cterence/tailout/tailout/config"
-	"github.com/cterence/tailout/tailout/tailscale"
+	"github.com/cterence/tailout/internal"
+	tsapi "github.com/tailscale/tailscale-client-go/tailscale"
+	"tailscale.com/client/tailscale"
 )
 
 func (app *App) Status() error {
-	c := tailscale.NewClient(&app.Config.Tailscale)
-
-	nodes, err := c.GetActiveNodes()
+	client, err := tsapi.NewClient(app.Config.Tailscale.APIKey, app.Config.Tailscale.Tailnet)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create tailscale client: %w", err)
 	}
 
-	out, err := exec.Command("tailscale", "debug", "prefs").CombinedOutput()
+	nodes, err := internal.GetActiveNodes(client)
+	if err != nil {
+		return fmt.Errorf("failed to get active nodes: %w", err)
+	}
 
+	var localClient tailscale.LocalClient
+	status, err := localClient.Status(context.TODO())
 	if err != nil {
 		return fmt.Errorf("failed to get tailscale preferences: %w", err)
 	}
 
-	var status config.TailscaleStatus
-	var currentNode config.Node
+	var currentNode tsapi.Device
 
-	json.Unmarshal(out, &status)
-
-	if status.ExitNodeID != "" {
-		currentNode, err = c.GetNode(status.ExitNodeID)
-		if err != nil {
-			return fmt.Errorf("failed to get node: %w", err)
-		}
+	if status.ExitNodeStatus != nil {
+		i := slices.IndexFunc(nodes, func(e tsapi.Device) bool {
+			return netip.MustParsePrefix(e.Addresses[0]+"/32") == status.ExitNodeStatus.TailscaleIPs[0]
+		})
+		currentNode = nodes[i]
 	}
 
 	if len(nodes) == 0 {
@@ -49,12 +53,17 @@ func (app *App) Status() error {
 	}
 
 	// Query for the public IP address of this Node
-	out, err = exec.Command("curl", "ifconfig.me").Output()
+	resp, err := http.Get("https://ifconfig.me")
+	if err != nil {
+		return fmt.Errorf("failed to get public IP: %w", err)
+	}
+	defer resp.Body.Close()
 
+	ipAddr, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("failed to get public IP: %w", err)
 	}
 
-	fmt.Println("Public IP:", string(out))
+	fmt.Println("Public IP: " + string(ipAddr))
 	return nil
 }

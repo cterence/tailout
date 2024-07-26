@@ -1,35 +1,51 @@
 package tailout
 
 import (
+	"context"
 	"fmt"
+	"net/netip"
+	"slices"
 
 	"github.com/cterence/tailout/internal"
-	"github.com/cterence/tailout/tailout/tailscale"
 	"github.com/manifoldco/promptui"
+	tsapi "github.com/tailscale/tailscale-client-go/tailscale"
+	"tailscale.com/client/tailscale"
+	"tailscale.com/ipn"
+	"tailscale.com/tailcfg"
 )
 
 func (app *App) Connect(args []string) error {
 	var nodeConnect string
 
 	nonInteractive := app.Config.NonInteractive
-	c := tailscale.NewClient(&app.Config.Tailscale)
+
+	apiClient, err := tsapi.NewClient(app.Config.Tailscale.APIKey, app.Config.Tailscale.Tailnet)
+	if err != nil {
+		return fmt.Errorf("failed to create tailscale client: %w", err)
+	}
+
+	var deviceToConnectTo tsapi.Device
+
+	tailoutDevices, err := internal.GetActiveNodes(apiClient)
+	if err != nil {
+		fmt.Errorf("failed to get active nodes: %w", err)
+	}
 
 	if len(args) != 0 {
 		nodeConnect = args[0]
+		i := slices.IndexFunc(tailoutDevices, func(e tsapi.Device) bool {
+			return e.Hostname == nodeConnect
+		})
+		deviceToConnectTo = tailoutDevices[i]
 	} else if !nonInteractive {
-		tailoutNodes, err := c.GetActiveNodes()
-		if err != nil {
-			return err
-		}
-
-		if len(tailoutNodes) == 0 {
+		if len(tailoutDevices) == 0 {
 			return fmt.Errorf("no tailout node found in your tailnet")
 		}
 
 		// Use promptui to select a node
 		prompt := promptui.Select{
 			Label: "Select a node",
-			Items: tailoutNodes,
+			Items: tailoutDevices,
 			Templates: &promptui.SelectTemplates{
 				Label:    "{{ . }}",
 				Active:   "{{ .Hostname | cyan }}",
@@ -43,12 +59,24 @@ func (app *App) Connect(args []string) error {
 			return fmt.Errorf("failed to select node: %w", err)
 		}
 
-		nodeConnect = tailoutNodes[idx].Hostname
+		deviceToConnectTo = tailoutDevices[idx]
+		nodeConnect = deviceToConnectTo.ID
 	} else {
 		return fmt.Errorf("no node name provided")
 	}
 
-	err := internal.RunTailscaleUpCommand("tailscale up --exit-node="+nodeConnect, nonInteractive)
+	var localClient tailscale.LocalClient
+
+	prefs := ipn.NewPrefs()
+
+	prefs.ExitNodeID = tailcfg.StableNodeID(nodeConnect)
+	prefs.ExitNodeIP = netip.MustParseAddr(deviceToConnectTo.Addresses[0])
+
+	_, err = localClient.EditPrefs(context.TODO(), &ipn.MaskedPrefs{
+		Prefs:         *prefs,
+		ExitNodeIDSet: true,
+		ExitNodeIPSet: true,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to run tailscale up command: %w", err)
 	}

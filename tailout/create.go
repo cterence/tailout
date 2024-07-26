@@ -15,7 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/cterence/tailout/internal"
-	"github.com/cterence/tailout/tailout/tailscale"
+	"github.com/tailscale/tailscale-client-go/tailscale"
 )
 
 func (app *App) Create() error {
@@ -24,8 +24,6 @@ func (app *App) Create() error {
 	dryRun := app.Config.DryRun
 	connect := app.Config.Create.Connect
 	shutdown := app.Config.Create.Shutdown
-
-	c := tailscale.NewClient(&app.Config.Tailscale)
 
 	if app.Config.Tailscale.AuthKey == "" {
 		return fmt.Errorf("no tailscale auth key found")
@@ -208,8 +206,13 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 
 	timeout := time.Now().Add(2 * time.Minute)
 
+	client, err := tailscale.NewClient(app.Config.Tailscale.APIKey, app.Config.Tailscale.Tailnet)
+	if err != nil {
+		return fmt.Errorf("failed to create tailscale client: %w", err)
+	}
+
 	for {
-		nodes, err := c.GetNodes()
+		nodes, err := client.Devices(context.TODO())
 		if err != nil {
 			return err
 		}
@@ -258,7 +261,7 @@ found:
 		return fmt.Errorf("no public IP address found")
 	}
 
-	fmt.Printf("Instance %s joined tailnet.\n", nodeName)
+	fmt.Printf("Node %s joined tailnet.\n", nodeName)
 	fmt.Println("Public IP address:", *instance.PublicIpAddress)
 	fmt.Println("Planned termination time:", time.Now().Add(duration).Format(time.RFC3339))
 
@@ -268,7 +271,10 @@ found:
 		if nonInteractive {
 			args = append(args, "--non-interactive")
 		}
-		app.Connect(args)
+		err = app.Connect(args)
+		if err != nil {
+			return fmt.Errorf("failed to connect to node: %w", err)
+		}
 	}
 	return nil
 }

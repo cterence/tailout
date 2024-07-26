@@ -15,7 +15,7 @@ inputs:
   tailscale_version:
     description: The version of tailscale to use
     required: false
-    default: "1.44.0"
+    default: "1.70.0"
   role_arn:
     description: The role to assume
     required: true
@@ -39,6 +39,7 @@ runs:
         oauth-secret: ${{ inputs.tailscale_oauth_client_secret }}
         version: ${{ inputs.tailscale_version }}
         tags: tag:github-actions-runner
+        args: --operator=runner
     - name: Download ${{ inputs.binary_name }} binary
       uses: actions/download-artifact@v4
       with:
