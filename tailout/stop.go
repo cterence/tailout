@@ -11,9 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/cterence/tailout/internal"
-	tailoutConfig "github.com/cterence/tailout/tailout/config"
-	"github.com/cterence/tailout/tailout/tailscale"
 	"github.com/ktr0731/go-fuzzyfinder"
+	"github.com/tailscale/tailscale-client-go/tailscale"
 )
 
 func (app *App) Stop(args []string) error {
@@ -21,11 +20,14 @@ func (app *App) Stop(args []string) error {
 	dryRun := app.Config.DryRun
 	stopAll := app.Config.Stop.All
 
-	c := tailscale.NewClient(&app.Config.Tailscale)
+	nodesToStop := []tailscale.Device{}
 
-	var nodesToStop []tailoutConfig.Node
+	client, err := tailscale.NewClient(app.Config.Tailscale.APIKey, app.Config.Tailscale.Tailnet)
+	if err != nil {
+		return fmt.Errorf("failed to create tailscale client: %w", err)
+	}
 
-	tailoutNodes, err := c.GetActiveNodes()
+	tailoutNodes, err := internal.GetActiveNodes(client)
 	if err != nil {
 		return err
 	}
@@ -44,13 +46,12 @@ func (app *App) Stop(args []string) error {
 			return fmt.Errorf("failed to find node: %w", err)
 		}
 
-		nodesToStop = []tailoutConfig.Node{}
+		nodesToStop = []tailscale.Device{}
 		for _, i := range idx {
 			nodesToStop = append(nodesToStop, tailoutNodes[i])
 		}
 	} else {
 		if !stopAll {
-			nodesToStop = []tailoutConfig.Node{}
 			for _, node := range tailoutNodes {
 				for _, arg := range args {
 					if node.Hostname == arg {
@@ -82,8 +83,8 @@ func (app *App) Stop(args []string) error {
 
 	// TODO: cleanup tailout instances that were not last seen recently
 	// TODO: warning when stopping a device to which you are connected, propose to disconnect before
-	for _, Node := range nodesToStop {
-		fmt.Println("Stopping", Node.Hostname)
+	for _, node := range nodesToStop {
+		fmt.Println("Stopping", node.Hostname)
 
 		regionNames, err := internal.GetRegions()
 		if err != nil {
@@ -91,7 +92,7 @@ func (app *App) Stop(args []string) error {
 		}
 		var region string
 		for _, regionName := range regionNames {
-			if strings.Contains(Node.Hostname, regionName) {
+			if strings.Contains(node.Hostname, regionName) {
 				region = regionName
 			}
 		}
@@ -110,7 +111,7 @@ func (app *App) Stop(args []string) error {
 
 		// Extract the instance ID from the Node name with a regex
 
-		instanceID := regexp.MustCompile(`i\-[a-z0-9]{17}$`).FindString(Node.Hostname)
+		instanceID := regexp.MustCompile(`i\-[a-z0-9]{17}$`).FindString(node.Hostname)
 
 		_, err = ec2Svc.TerminateInstances(context.TODO(), &ec2.TerminateInstancesInput{
 			DryRun:      aws.Bool(dryRun),
@@ -121,14 +122,14 @@ func (app *App) Stop(args []string) error {
 			return fmt.Errorf("failed to terminate instance: %w", err)
 		}
 
-		fmt.Println("Successfully terminated instance", Node.Hostname)
+		fmt.Println("Successfully terminated instance", node.Hostname)
 
-		err = c.DeleteNode(Node.ID)
+		err = client.DeleteDevice(context.TODO(), node.ID)
 		if err != nil {
 			return fmt.Errorf("failed to delete node from tailnet: %w", err)
 		}
 
-		fmt.Println("Successfully deleted node", Node.Hostname)
+		fmt.Println("Successfully deleted node", node.Hostname)
 	}
 	return nil
 }
