@@ -264,8 +264,6 @@ found:
 	fmt.Printf("Node %s joined tailnet.\n", nodeName)
 	fmt.Println("Public IP address:", *instance.PublicIpAddress)
 	fmt.Println("Planned termination time:", time.Now().Add(duration).Format(time.RFC3339))
-	fmt.Println("\nTo connect to the exit node, run:")
-	fmt.Println("sudo tailscale up --exit-node=" + nodeName)
 
 	if connect {
 		fmt.Println()
