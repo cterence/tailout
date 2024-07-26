@@ -271,7 +271,10 @@ found:
 		if nonInteractive {
 			args = append(args, "--non-interactive")
 		}
-		app.Connect(args)
+		err = app.Connect(args)
+		if err != nil {
+			return fmt.Errorf("failed to connect to node: %w", err)
+		}
 	}
 	return nil
 }
