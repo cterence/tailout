@@ -16,6 +16,7 @@ type Config struct {
 	Tailscale TailscaleConfig `mapstructure:"tailscale"`
 	Create    CreateConfig    `mapstructure:"create"`
 	Stop      StopConfig      `mapstructure:"stop"`
+	Ui        UiConfig        `mapstructure:"ui"`
 }
 
 type CreateConfig struct {
@@ -31,6 +32,11 @@ type TailscaleConfig struct {
 
 type StopConfig struct {
 	All bool `mapstructure:"all"`
+}
+
+type UiConfig struct {
+	Port    string `mapstructure:"port"`
+	Address string `mapstructure:"address"`
 }
 
 type Policy struct {

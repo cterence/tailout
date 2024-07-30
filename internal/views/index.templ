@@ -1,0 +1,56 @@
+package views
+
+import "github.com/cterence/tailout/internal/views/components"
+
+templ Index() {
+	<!DOCTYPE html>
+	<html lang="en" class="text-gray-900 antialiased leading-tight">
+		@components.Header()
+		<body class="min-h-screen bg-gray-100 p-4">
+			<div class="md:container md:mx-auto">
+				@components.Title()
+				<h2 class="text-xl my-4 text-gray-600">create an exit node in your tailnet in seconds.</h2>
+				<div>
+					<button id="create-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 mr-2 rounded" hx-post="/create" hx-indicator="#spinner" hx-target="#create-btn" hx-on::before-request="disableButton(event)" hx-on::after-request="enableButton(event)" hx-swap="none">
+						Create exit node
+						// <img id="spinner" class="htmx-indicator" src="/assets/spinner.svg" alt="spinner"/>
+					</button>
+					<button id="stop-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" hx-post="/stop" hx-swap="none" hx-indicator="#spinner" hx-on::before-request="disableButton(event)" hx-on::after-request="enableButton(event)">
+						Stop all exit nodes
+					</button>
+				</div>
+				// Table of exit nodes
+				<div class="overflow-x-auto my-4">
+					<table class="table-auto w-full text-sm text-left text-gray-500">
+						<thead class="text-xs text-gray-700 uppercase bg-gray-50">
+							<tr>
+								<th class="px-4 py-2">Hostname</th>
+								<th class="px-4 py-2">Address</th>
+								<th class="px-4 py-2">Last seen</th>
+							</tr>
+						</thead>
+						<tbody hx-get="/status" hx-trigger="load,every 5s"></tbody>
+					</table>
+				</div>
+			</div>
+			@components.Footer()
+		</body>
+		<script>
+    function disableButton(e) {
+        htmx.removeClass(e.detail.elt, 'hover:bg-blue-700');
+        htmx.removeClass(e.detail.elt, 'bg-blue-500');
+        htmx.addClass(e.detail.elt, 'cursor-not-allowed');
+        htmx.addClass(e.detail.elt, 'bg-gray-300');
+        e.disabled = true;
+    }
+
+    function enableButton(e) {
+        htmx.removeClass(e.detail.elt, 'cursor-not-allowed');
+        htmx.removeClass(e.detail.elt, 'bg-gray-300');
+        htmx.addClass(e.detail.elt, 'hover:bg-blue-700');
+        htmx.addClass(e.detail.elt, 'bg-blue-500');
+        e.disabled = false;
+    }
+    </script>
+	</html>
+}

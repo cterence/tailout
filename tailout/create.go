@@ -204,7 +204,7 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 	// Call internal.GetNodes periodically and search for the instance
 	// If the instance is found, print the command to use it as an exit node
 
-	timeout := time.Now().Add(2 * time.Minute)
+	timeout := time.Now().Add(3 * time.Minute)
 
 	client, err := tailscale.NewClient(app.Config.Tailscale.APIKey, app.Config.Tailscale.Tailnet)
 	if err != nil {
@@ -268,9 +268,6 @@ found:
 	if connect {
 		fmt.Println()
 		args := []string{nodeName}
-		if nonInteractive {
-			args = append(args, "--non-interactive")
-		}
 		err = app.Connect(args)
 		if err != nil {
 			return fmt.Errorf("failed to connect to node: %w", err)
