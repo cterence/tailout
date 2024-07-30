@@ -11,7 +11,7 @@ To install `tailout`, you can download the latest release from the [releases pag
 You can also use the `go install` command:
 
 ```bash
-go install github.com/cterence/tailout
+go install github.com/cterence/tailout@latest
 ```
 
 ## Prerequisites
