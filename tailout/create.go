@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
+	"slices"
 	"sync"
 	"time"
 
@@ -43,7 +44,7 @@ func (app *App) Create() error {
 	// Create EC2 service client
 
 	if region == "" && !nonInteractive {
-		region, err = internal.SelectRegion()
+		region, err = internal.SelectAWSRegion()
 		if err != nil {
 			return fmt.Errorf("failed to select region: %w", err)
 		}
@@ -63,7 +64,7 @@ func (app *App) Create() error {
 		Filters: []types.Filter{
 			{
 				Name:   aws.String("name"),
-				Values: []string{"amzn2-ami-hvm-2.0.*-x86_64-gp2"},
+				Values: []string{"al2023-ami-202*"},
 			},
 			{
 				Name:   aws.String("architecture"),
@@ -82,7 +83,22 @@ func (app *App) Create() error {
 	}
 
 	// Get the latest Amazon Linux AMI ID
-	latestAMI := amazonLinuxImages.Images[0]
+	slices.SortFunc(amazonLinuxImages.Images, func(i, j types.Image) int {
+		itime, err := time.Parse(time.RFC3339, *i.CreationDate)
+		if err != nil {
+			return 0
+		}
+		jtime, err := time.Parse(time.RFC3339, *j.CreationDate)
+		if err != nil {
+			return 0
+		}
+		if itime.Before(jtime) {
+			return 1
+		}
+		return -1
+	})
+
+	latestAMI := amazonLinuxImages.Images[len(amazonLinuxImages.Images)-1]
 	imageID := *latestAMI.ImageId
 
 	// Define the instance details

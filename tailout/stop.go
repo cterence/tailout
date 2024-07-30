@@ -86,7 +86,7 @@ func (app *App) Stop(args []string) error {
 	for _, node := range nodesToStop {
 		fmt.Println("Stopping", node.Hostname)
 
-		regionNames, err := internal.GetRegions()
+		regionNames, err := internal.GetAWSRegions()
 		if err != nil {
 			return fmt.Errorf("failed to retrieve regions: %w", err)
 		}
