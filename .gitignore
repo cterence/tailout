@@ -25,3 +25,5 @@ config.yaml
 
 tmp/
 bin/
+
+*_templ.go
