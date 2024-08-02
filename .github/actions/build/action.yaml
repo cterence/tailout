@@ -10,6 +10,15 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - uses: actions/setup-go@v5
+      with:
+        go-version: stable
+    - name: Generate templ code
+      uses: capthiron/templ-generator-action@v1
+      with:
+        commit: "false"
+        setup-go: "false"
+        directory: "internal/views"
     - name: Build ${{ inputs.binary_name }}
       run: go build -o bin/${{ inputs.binary_name }}
       shell: bash
