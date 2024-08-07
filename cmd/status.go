@@ -26,6 +26,7 @@ func buildStatusCommand(app *tailout.App) *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(&app.Config.Tailscale.APIKey, "tailscale-api-key", "", "Tailscale API key used to perform operations on your tailnet")
 	cmd.PersistentFlags().StringVar(&app.Config.Tailscale.Tailnet, "tailscale-tailnet", "", "Tailscale Tailnet to use for operations")
+	cmd.PersistentFlags().StringVar(&app.Config.Tailscale.BaseURL, "tailscale-base-url", "https://api.tailscale.com", "Tailscale base API URL, change this if you are using Headscale")
 
 	return cmd
 }

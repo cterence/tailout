@@ -14,12 +14,6 @@ type App struct {
 	Err io.Writer
 }
 
-type Tailscale struct {
-	AuthKey string
-	APIKey  string
-	Tailnet string
-}
-
 func New() (*App, error) {
 	c := &config.Config{}
 	app := &App{
