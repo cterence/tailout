@@ -14,7 +14,7 @@ import (
 )
 
 func (app *App) Status() error {
-	client, err := tsapi.NewClient(app.Config.Tailscale.APIKey, app.Config.Tailscale.Tailnet)
+	client, err := tsapi.NewClient(app.Config.Tailscale.APIKey, app.Config.Tailscale.Tailnet, tsapi.WithBaseURL(app.Config.Tailscale.BaseURL))
 	if err != nil {
 		return fmt.Errorf("failed to create tailscale client: %w", err)
 	}

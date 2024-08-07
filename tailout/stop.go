@@ -22,7 +22,7 @@ func (app *App) Stop(args []string) error {
 
 	nodesToStop := []tailscale.Device{}
 
-	client, err := tailscale.NewClient(app.Config.Tailscale.APIKey, app.Config.Tailscale.Tailnet)
+	client, err := tailscale.NewClient(app.Config.Tailscale.APIKey, app.Config.Tailscale.Tailnet, tailscale.WithBaseURL(app.Config.Tailscale.BaseURL))
 	if err != nil {
 		return fmt.Errorf("failed to create tailscale client: %w", err)
 	}

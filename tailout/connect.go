@@ -19,7 +19,7 @@ func (app *App) Connect(args []string) error {
 
 	nonInteractive := app.Config.NonInteractive
 
-	apiClient, err := tsapi.NewClient(app.Config.Tailscale.APIKey, app.Config.Tailscale.Tailnet)
+	apiClient, err := tsapi.NewClient(app.Config.Tailscale.APIKey, app.Config.Tailscale.Tailnet, tsapi.WithBaseURL(app.Config.Tailscale.BaseURL))
 	if err != nil {
 		return fmt.Errorf("failed to create tailscale client: %w", err)
 	}
