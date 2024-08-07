@@ -22,6 +22,12 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: stable
+      - name: Generate templ code
+        uses: capthiron/templ-generator-action@v1
+        with:
+          commit: "false"
+          setup-go: "false"
+          directory: "internal/views"
       # More assembly might be required: Docker logins, GPG, etc. It all depends
       # on your needs.
       - uses: goreleaser/goreleaser-action@v6
