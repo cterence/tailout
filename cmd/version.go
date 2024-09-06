@@ -33,7 +33,7 @@ func buildVersionCommand(app *tailout.App) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			buildInfo, ok := debug.ReadBuildInfo()
 			if !ok {
-				return errors.New("Unable to ReadBuildInfo(), which shouldn't happen, as Tailout shouold be built with module support")
+				return errors.New("Unable to ReadBuildInfo(), which shouldn't happen, as Tailout should be built with module support")
 			}
 			_, err := fmt.Printf("Tailout version %s\n", buildVersionString(buildInfo))
 
