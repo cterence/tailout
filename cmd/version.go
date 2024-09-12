@@ -3,13 +3,13 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"runtime/debug"
 	"github.com/cterence/tailout/tailout"
 	"github.com/spf13/cobra"
+	"runtime/debug"
 )
 
-func buildVersionString(buildInfo *debug.BuildInfo) (string) {
-	var revision string;
+func buildVersionString(buildInfo *debug.BuildInfo) string {
+	var revision string
 
 	for _, kv := range buildInfo.Settings {
 		switch kv.Key {
@@ -26,7 +26,7 @@ func buildVersionString(buildInfo *debug.BuildInfo) (string) {
 }
 
 func buildVersionCommand(app *tailout.App) *cobra.Command {
-		cmd := &cobra.Command{
+	cmd := &cobra.Command{
 		Args:  cobra.ArbitraryArgs,
 		Use:   "version",
 		Short: "Print the Tailout version",
