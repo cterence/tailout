@@ -3,7 +3,7 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-bin = "./tmp/tailout"
+bin = "./tmp/tailout add -p gcp --load .tailout.yaml"
 cmd = "go mod tidy && go build -o ./tmp/tailout ."
 delay = 1000
 exclude_dir = ["assets", "tmp", "vendor", "testdata"]
