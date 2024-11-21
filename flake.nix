@@ -1,10 +1,21 @@
 {
-  description = "A Nix-flake-based Go 1.22 development environment";
+  description = "A Nix-flake-based Go 1.23 development environment";
 
-  inputs.nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1.*.tar.gz";
+  inputs = {
+    nixpkgs.url = "nixpkgs/nixos-unstable";
+
+    pre-commit-hooks = {
+      url = "github:cachix/git-hooks.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
 
   outputs =
-    { self, nixpkgs }:
+    {
+      self,
+      nixpkgs,
+      pre-commit-hooks,
+    }:
     let
       goVersion = 23; # Change this to update the whole stack
 
@@ -35,19 +46,29 @@
         { pkgs }:
         {
           default = pkgs.mkShell {
+            inherit (self.checks.${pkgs.system}.pre-commit-check) shellHook;
             packages = with pkgs; [
               air
-              # go (version is specified by overlay)
               go
-
-              # goimports, godoc, etc.
               gotools
-
-              # https://github.com/golangci/golangci-lint
-              golangci-lint
-
               templ
+              self.checks.${system}.pre-commit-check.enabledPackages
             ];
+          };
+        }
+      );
+
+      checks = forEachSupportedSystem (
+        { pkgs }:
+        {
+          pre-commit-check = pre-commit-hooks.lib.${pkgs.system}.run {
+            src = ./.;
+            hooks = {
+              gofmt.enable = true;
+              golangci-lint.enable = true;
+              govet.enable = true;
+              staticcheck.enable = true;
+            };
           };
         }
       );

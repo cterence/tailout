@@ -26,3 +26,5 @@ config.yaml
 tmp/
 bin/
 .direnv/
+
+.pre-commit-config.yaml
