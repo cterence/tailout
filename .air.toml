@@ -4,7 +4,7 @@ tmp_dir = "tmp"
 
 [build]
 bin = "./tmp/tailout"
-cmd = "go mod tidy && templ generate && go build -o ./tmp/tailout ."
+cmd = "go mod tidy && go build -o ./tmp/tailout ."
 delay = 1000
 exclude_dir = ["assets", "tmp", "vendor", "testdata"]
 exclude_file = []
