@@ -9,17 +9,34 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/cterence/tailout/pkg/types"
 )
 
 type Provider struct {
-	Client aws.Config
-	Region ec2Types.Region
+	Client      aws.Config
+	Region      ec2Types.Region
+	Credentials aws.Credentials
 }
 
-func (p *Provider) CreateNode(ctx *context.Context, nc types.NodeConfig, dryRun bool) (types.Node, error) {
+func (p *Provider) Init(ctx context.Context, pc types.ProviderConfig) error {
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(pc.Region))
+	if err != nil {
+		return fmt.Errorf("failed to load AWS SDK config, %v", err)
+	}
+	creds, err := cfg.Credentials.Retrieve(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get credentials: %v", err)
+	}
+	p.Client = cfg
+	p.Credentials = creds
+	return nil
+}
+
+func (p *Provider) CreateNode(ctx context.Context, nc types.NodeConfig, dryRun bool) (types.Node, error) {
+	fmt.Println(p.Details())
 	n := Node{
 		AuthKey:  nc.AuthKey,
 		Shutdown: nc.Shutdown,
@@ -28,7 +45,7 @@ func (p *Provider) CreateNode(ctx *context.Context, nc types.NodeConfig, dryRun 
 
 	// TODO: give more control on this ?
 	// TODO: paginated request
-	amazonLinuxAMIsOutput, err := ec2Svc.DescribeImages(*ctx, &ec2.DescribeImagesInput{
+	amazonLinuxAMIsOutput, err := ec2Svc.DescribeImages(ctx, &ec2.DescribeImagesInput{
 		Filters: []ec2Types.Filter{
 			{
 				Name:   aws.String("name"),
@@ -78,8 +95,6 @@ func (p *Provider) CreateNode(ctx *context.Context, nc types.NodeConfig, dryRun 
 		return n, fmt.Errorf("failed to execute user data template: %v", err)
 	}
 
-	fmt.Println(userDataBuffer.String())
-
 	userData := base64.StdEncoding.EncodeToString(userDataBuffer.Bytes())
 
 	runInput := &ec2.RunInstancesInput{
@@ -99,7 +114,7 @@ func (p *Provider) CreateNode(ctx *context.Context, nc types.NodeConfig, dryRun 
 	}
 
 	// Run the EC2 instance
-	runResult, err := ec2Svc.RunInstances(*ctx, runInput)
+	runResult, err := ec2Svc.RunInstances(ctx, runInput)
 	if err != nil {
 		return n, fmt.Errorf("failed to create EC2 instance: %w", err)
 	}
@@ -111,7 +126,7 @@ func (p *Provider) CreateNode(ctx *context.Context, nc types.NodeConfig, dryRun 
 	n.InAWS = runResult.Instances[0]
 
 	// Add a handler for the instance state change event
-	err = ec2.NewInstanceExistsWaiter(ec2Svc).Wait(*ctx, &ec2.DescribeInstancesInput{
+	err = ec2.NewInstanceExistsWaiter(ec2Svc).Wait(ctx, &ec2.DescribeInstancesInput{
 		InstanceIds: []string{n.GetID()},
 	}, time.Minute*2)
 	if err != nil {
@@ -121,6 +136,13 @@ func (p *Provider) CreateNode(ctx *context.Context, nc types.NodeConfig, dryRun 
 	fmt.Println("instance is running")
 
 	return n, nil
+}
+
+func (p *Provider) Details() string {
+	return fmt.Sprintf(`- Provider: AWS
+- Account ID: %s
+- Region: %s
+`, p.Credentials.AccountID, p.Client.Region)
 }
 
 func (p *Provider) GetNode(nodeId string) (types.Node, error) {

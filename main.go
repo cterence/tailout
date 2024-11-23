@@ -6,7 +6,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/cterence/tailout/pkg/factory"
+	"github.com/cterence/tailout/pkg/aws"
+	"github.com/cterence/tailout/pkg/gcp"
 	"github.com/cterence/tailout/pkg/types"
 	"github.com/urfave/cli/v2"
 	"github.com/urfave/cli/v2/altsrc"
@@ -15,7 +16,7 @@ import (
 func main() {
 	var (
 		authKey          string
-		providerFlag     string
+		gcpProjectIDFlag string
 		regionFlag       string
 		instanceTypeFlag string
 		shutdownFlag     int
@@ -25,14 +26,11 @@ func main() {
 	const flagPrefix = "TAILOUT_"
 
 	flags := map[string]cli.Flag{
-		"load": &cli.StringFlag{Name: "load"},
-		"provider": altsrc.NewStringFlag(&cli.StringFlag{
-			Name:        "provider",
-			Aliases:     []string{"p"},
-			Usage:       "Provider for the exit node",
-			Destination: &providerFlag,
-			EnvVars:     []string{flagPrefix + "PROVIDER"},
-			Required:    true,
+		"gcp-project-id": altsrc.NewStringFlag(&cli.StringFlag{
+			Name:        "gcp-project-id",
+			Usage:       "GCP project ID of the exit node",
+			Destination: &gcpProjectIDFlag,
+			EnvVars:     []string{flagPrefix + "GCP_PROJECT_ID"},
 		}),
 		"region": altsrc.NewStringFlag(&cli.StringFlag{
 			Name:        "region",
@@ -50,13 +48,14 @@ func main() {
 		}),
 		"auth-key": altsrc.NewStringFlag(&cli.StringFlag{
 			Name:        "auth-key",
-			Aliases:     []string{"a"},
-			Usage:       "Auth key for the node",
+			Aliases:     []string{"k"},
+			Usage:       "Tailscale auth key for the node",
 			Destination: &authKey,
 			EnvVars:     []string{flagPrefix + "AUTH_KEY"},
 		}),
 		"shutdown": altsrc.NewIntFlag(&cli.IntFlag{
 			Name:        "shutdown",
+			Value:       15,
 			Aliases:     []string{"s"},
 			Usage:       "Delay after which the node will shutdown, in minutes",
 			Destination: &shutdownFlag,
@@ -71,15 +70,24 @@ func main() {
 		}),
 	}
 
-	addFlags := []cli.Flag{
-		flags["load"],
-		flags["provider"],
+	addAWSFlags := []cli.Flag{
 		flags["region"],
 		flags["instance-type"],
 		flags["auth-key"],
 		flags["shutdown"],
 		flags["dry-run"],
 	}
+
+	addGCPFlags := []cli.Flag{
+		flags["account"],
+		flags["region"],
+		flags["instance-type"],
+		flags["auth-key"],
+		flags["shutdown"],
+		flags["dry-run"],
+	}
+
+	// TODO: good config file handling like viper
 
 	app := &cli.App{
 		Name:  "tailout",
@@ -89,24 +97,61 @@ func main() {
 				Name:    "add",
 				Aliases: []string{"a"},
 				Usage:   "Add an exit node to your tailnet",
-				Flags:   addFlags,
-				Before:  altsrc.InitInputSourceWithContext(addFlags, altsrc.NewYamlSourceFromFlagFunc("load")),
-				Action: func(ctx *cli.Context) error {
-					shutdown := strconv.Itoa(shutdownFlag)
-					nc := types.NodeConfig{
-						AuthKey:      authKey,
-						Shutdown:     shutdown,
-						InstanceType: instanceTypeFlag,
-					}
-					p, err := factory.GetCloudProvider(providerFlag, regionFlag)
-					if err != nil {
-						log.Fatalf("failed to get cloud provider, %v", err)
-					}
-					_, err = p.CreateNode(&ctx.Context, nc, dryRunFlag)
-					if err != nil {
-						return fmt.Errorf("failed to add exit node: %v", err)
-					}
-					return nil
+				Subcommands: []*cli.Command{
+					{
+						Name: "aws",
+						Before: altsrc.InitInputSourceWithContext(addAWSFlags, func(cCtx *cli.Context) (altsrc.InputSourceContext, error) {
+							return altsrc.NewYamlSourceFromFile(".tailout.yaml")
+						}),
+						Action: func(ctx *cli.Context) error {
+							pc := types.ProviderConfig{
+								Region: regionFlag,
+							}
+							p := aws.Provider{}
+							if err := p.Init(ctx.Context, pc); err != nil {
+								return fmt.Errorf("failed to init AWS provider: %v", err)
+							}
+							nc := types.NodeConfig{
+								AuthKey:      authKey,
+								Shutdown:     strconv.Itoa(shutdownFlag),
+								InstanceType: instanceTypeFlag,
+							}
+							_, err := p.CreateNode(ctx.Context, nc, dryRunFlag)
+							if err != nil {
+								return fmt.Errorf("failed to add exit node: %v", err)
+							}
+							return nil
+						},
+					},
+					{
+						Name: "gcp",
+						Before: altsrc.InitInputSourceWithContext(addGCPFlags, func(cCtx *cli.Context) (altsrc.InputSourceContext, error) {
+							return altsrc.NewYamlSourceFromFile(".tailout.yaml")
+						}),
+
+						Action: func(ctx *cli.Context) error {
+							shutdown := strconv.Itoa(shutdownFlag)
+							pc := types.ProviderConfig{
+								Account: gcpProjectIDFlag,
+								Region:  regionFlag,
+							}
+							p := gcp.Provider{}
+							if err := p.Init(ctx.Context, pc); err != nil {
+								return fmt.Errorf("failed to init GCP provider: %v", err)
+							}
+
+							nc := types.NodeConfig{
+								AuthKey:      authKey,
+								Shutdown:     shutdown,
+								InstanceType: instanceTypeFlag,
+							}
+							_, err := p.CreateNode(ctx.Context, nc, dryRunFlag)
+							if err != nil {
+								return fmt.Errorf("failed to add exit node: %v", err)
+							}
+							return nil
+						},
+					},
 				},
 			},
 		},
