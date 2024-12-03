@@ -2,7 +2,7 @@ module github.com/cterence/tailout
 
 go 1.23.1
 
-toolchain go1.23.3
+toolchain go1.23.4
 
 require (
 	github.com/a-h/templ v0.2.793
