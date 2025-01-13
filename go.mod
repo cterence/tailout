@@ -9,7 +9,7 @@ require (
 	github.com/adhocore/chin v1.1.0
 	github.com/aws/aws-sdk-go-v2 v1.32.8
 	github.com/aws/aws-sdk-go-v2/config v1.28.10
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.198.3
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.199.0
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.6
 	github.com/ktr0731/go-fuzzyfinder v0.8.0
 	github.com/manifoldco/promptui v0.9.0
