@@ -5,7 +5,7 @@ go 1.23.1
 toolchain go1.23.5
 
 require (
-	github.com/a-h/templ v0.3.819
+	github.com/a-h/templ v0.3.833
 	github.com/adhocore/chin v1.1.0
 	github.com/aws/aws-sdk-go-v2 v1.36.0
 	github.com/aws/aws-sdk-go-v2/config v1.29.4
