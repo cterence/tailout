@@ -25,3 +25,6 @@ config.yaml
 
 tmp/
 bin/
+
+# VS Code
+.vscode/
