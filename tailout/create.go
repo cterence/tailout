@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
+	"sort"
 	"sync"
 	"time"
 
@@ -63,7 +64,15 @@ func (app *App) Create() error {
 		Filters: []types.Filter{
 			{
 				Name:   aws.String("name"),
-				Values: []string{"amzn2-ami-hvm-2.0.*-x86_64-gp2"},
+				Values: []string{"al2023-ami-*"},
+			},
+			{
+				Name:   aws.String("state"),
+				Values: []string{"available"},
+			},
+			{
+				Name:   aws.String("is-public"),
+				Values: []string{"true"},
 			},
 			{
 				Name:   aws.String("architecture"),
@@ -80,6 +89,10 @@ func (app *App) Create() error {
 	if len(amazonLinuxImages.Images) == 0 {
 		return fmt.Errorf("no Amazon Linux images found")
 	}
+
+	sort.Slice(amazonLinuxImages.Images, func(i, j int) bool {
+		return *amazonLinuxImages.Images[i].CreationDate > *amazonLinuxImages.Images[j].CreationDate
+	})
 
 	// Get the latest Amazon Linux AMI ID
 	latestAMI := amazonLinuxImages.Images[0]
