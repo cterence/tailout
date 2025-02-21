@@ -25,3 +25,6 @@ config.yaml
 
 tmp/
 bin/
+
+# GoReleaser
+dist/
