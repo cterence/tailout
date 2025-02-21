@@ -28,7 +28,7 @@ func (app *App) Connect(args []string) error {
 
 	tailoutDevices, err := internal.GetActiveNodes(apiClient)
 	if err != nil {
-		fmt.Errorf("failed to get active nodes: %w", err)
+		return fmt.Errorf("failed to get active nodes: %w", err)
 	}
 
 	if len(args) != 0 {

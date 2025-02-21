@@ -53,7 +53,12 @@ func (app *App) Status() error {
 	}
 
 	// Query for the public IP address of this Node
-	resp, err := http.Get("https://ifconfig.me")
+	httpClient := &http.Client{}
+	req, err := http.NewRequestWithContext(context.TODO(), http.MethodGet, "https://ifconfig.me/ip", nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to get public IP: %w", err)
 	}
