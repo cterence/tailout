@@ -1,3 +1,6 @@
+[![CI](https://github.com/cterence/tailout/actions/workflows/ci.yml/badge.svg)](https://github.com/cterence/tailout/actions/workflows/ci.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/cterence/tailout)](https://goreportcard.com/report/github.com/cterence/tailout)
+
 # tailout
 
 `tailout` is a command-line tool for quickly creating a cloud-based exit node in your tailnet.
