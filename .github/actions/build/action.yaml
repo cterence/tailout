@@ -10,11 +10,11 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: actions/setup-go@v5
+    - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5
       with:
         go-version: stable
     - name: Generate templ code
-      uses: capthiron/templ-generator-action@v1
+      uses: capthiron/templ-generator-action@f1f7b5d0b261eccff32fa3fc17cf563d993fee94 # v1
       with:
         commit: "false"
         setup-go: "false"
@@ -23,7 +23,7 @@ runs:
       run: go build -o bin/${{ inputs.binary_name }}
       shell: bash
     - name: Upload ${{ inputs.binary_name }} binary
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4
       with:
         name: ${{ inputs.binary_name }}
         path: bin/${{ inputs.binary_name }}
