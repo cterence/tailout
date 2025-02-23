@@ -27,13 +27,13 @@ runs:
   using: "composite"
   steps:
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4
       with:
         role-to-assume: ${{ inputs.role_arn }}
         role-session-name: tailout-${{ github.job }}
         aws-region: ${{ inputs.region }}
     - name: Connect runner to tailscale
-      uses: tailscale/github-action@v3
+      uses: tailscale/github-action@8688eb839e58e6b25c1ae96cd99d1c173299b842 # v3
       with:
         oauth-client-id: ${{ inputs.tailscale_oauth_client_id }}
         oauth-secret: ${{ inputs.tailscale_oauth_client_secret }}
@@ -41,7 +41,7 @@ runs:
         tags: tag:github-actions-runner
         args: --operator=runner
     - name: Download ${{ inputs.binary_name }} binary
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
       with:
         name: ${{ inputs.binary_name }}
         path: bin/
