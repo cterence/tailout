@@ -1,27 +1,20 @@
 version: 2
-before:
-  hooks:
-    - go mod tidy
 builds:
   - env:
       - CGO_ENABLED=0
-      - PACKAGE=github.com/cterence/tailout
-    ldflags:
-      - -X ${PACKAGE}/internal/version.Version=${VERSION}
-      - -X ${PACKAGE}/internal/version.CommitHash=${COMMIT_HASH}
-      - -X ${PACKAGE}/internal/version.BuildTimestamp=${BUILD_TIMESTAMP}
     goos:
       - linux
-    main: ./
+      - darwin
+      - windows
     binary: tailout
 archives:
   - format_overrides:
       - goos: windows
-        format: zip
+        formats: ['zip']
 checksum:
   name_template: "checksums.txt"
 snapshot:
-  name_template: "{{ .Tag }}-next"
+  version_template: "{{ .Tag }}-next"
 changelog:
   sort: asc
   use: github
