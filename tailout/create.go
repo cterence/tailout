@@ -94,10 +94,11 @@ echo 'net.ipv4.ip_forward = 1' | sudo tee -a /etc/sysctl.conf
 echo 'net.ipv6.conf.all.forwarding = 1' | sudo tee -a /etc/sysctl.conf
 sudo sysctl -p /etc/sysctl.conf
 
-export INSTANCE_ID=$(curl http://169.254.169.254/latest/meta-data/instance-id)
+TOKEN=$(curl -sSL -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 30")
+INSTANCE_ID=$(curl -sSL -H "X-aws-ec2-metadata-token: ${TOKEN}" http://169.254.169.254/latest/meta-data/instance-id)
 
 curl -fsSL https://tailscale.com/install.sh | sh
-sudo tailscale up --auth-key=` + app.Config.Tailscale.AuthKey + ` --hostname=tailout-` + region + `-$INSTANCE_ID --advertise-exit-node --ssh
+sudo tailscale up --auth-key=` + app.Config.Tailscale.AuthKey + ` --hostname=tailout-` + region + `-${INSTANCE_ID} --advertise-exit-node --ssh
 sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes`
 
 	// Encode the string in base64
@@ -167,6 +168,10 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 		{
 			Key:   aws.String("App"),
 			Value: aws.String("tailout"),
+		},
+		{
+			Key:   aws.String("Name"),
+			Value: aws.String(nodeName),
 		},
 	}
 
