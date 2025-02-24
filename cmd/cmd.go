@@ -26,7 +26,7 @@ func buildTailoutCommand(app *tailout.App) *cobra.Command {
 	cmd.AddCommand(buildStatusCommand(app))
 	cmd.AddCommand(buildStopCommand(app))
 	cmd.AddCommand(buildUiCommand(app))
-  cmd.AddCommand(buildVersionCommand(app))
+	cmd.AddCommand(buildVersionCommand())
 
 	return cmd
 }

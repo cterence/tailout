@@ -2,6 +2,7 @@ package tailout
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/netip"
 	"slices"
@@ -39,7 +40,7 @@ func (app *App) Connect(args []string) error {
 		deviceToConnectTo = tailoutDevices[i]
 	} else if !nonInteractive {
 		if len(tailoutDevices) == 0 {
-			return fmt.Errorf("no tailout node found in your tailnet")
+			return errors.New("no tailout node found in your tailnet")
 		}
 
 		// Use promptui to select a node
@@ -62,7 +63,7 @@ func (app *App) Connect(args []string) error {
 		deviceToConnectTo = tailoutDevices[idx]
 		nodeConnect = deviceToConnectTo.ID
 	} else {
-		return fmt.Errorf("no node name provided")
+		return errors.New("no node name provided")
 	}
 
 	var localClient tailscale.LocalClient

@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/cterence/tailout/tailout"
 	"github.com/spf13/cobra"
 )
 
-// createCmd represents the create command
+// createCmd represents the create command.
 func buildCreateCommand(app *tailout.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Args:  cobra.NoArgs,
@@ -24,7 +26,7 @@ func buildCreateCommand(app *tailout.App) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := app.Create()
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to create exit node: %w", err)
 			}
 			return nil
 		},

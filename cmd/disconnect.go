@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/cterence/tailout/tailout"
 	"github.com/spf13/cobra"
 )
 
-// disconnectCmd represents the disconnect command
+// disconnectCmd represents the disconnect command.
 func buildDisconnectCommand(app *tailout.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Args:  cobra.NoArgs,
@@ -14,7 +16,7 @@ func buildDisconnectCommand(app *tailout.App) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := app.Disconnect()
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to disconnect: %w", err)
 			}
 			return nil
 		},

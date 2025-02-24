@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/cterence/tailout/tailout"
 	"github.com/spf13/cobra"
 )
@@ -18,7 +20,7 @@ func buildStatusCommand(app *tailout.App) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := app.Status()
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to show status: %w", err)
 			}
 			return nil
 		},
