@@ -2,6 +2,7 @@ package tailout
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"regexp"
@@ -29,7 +30,7 @@ func (app *App) Stop(args []string) error {
 
 	tailoutNodes, err := internal.GetActiveNodes(client)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get active nodes: %w", err)
 	}
 
 	if len(tailoutNodes) == 0 {
@@ -98,7 +99,7 @@ func (app *App) Stop(args []string) error {
 		}
 
 		if region == "" {
-			return fmt.Errorf("failed to extract region from node name")
+			return errors.New("failed to extract region from node name")
 		}
 
 		// Create a session to share configuration, and load external configuration.
@@ -117,7 +118,6 @@ func (app *App) Stop(args []string) error {
 			DryRun:      aws.Bool(dryRun),
 			InstanceIds: []string{instanceID},
 		})
-
 		if err != nil {
 			return fmt.Errorf("failed to terminate instance: %w", err)
 		}

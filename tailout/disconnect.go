@@ -2,6 +2,7 @@ package tailout
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/netip"
 
@@ -17,7 +18,7 @@ func (app *App) Disconnect() error {
 	}
 
 	if prefs.ExitNodeID == "" {
-		return fmt.Errorf("not connected to an exit node")
+		return errors.New("not connected to an exit node")
 	}
 
 	disconnectPrefs := ipn.NewPrefs()
@@ -30,7 +31,6 @@ func (app *App) Disconnect() error {
 		ExitNodeIDSet: true,
 		ExitNodeIPSet: true,
 	})
-
 	if err != nil {
 		return fmt.Errorf("failed to run tailscale up command: %w", err)
 	}

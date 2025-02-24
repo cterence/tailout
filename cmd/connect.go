@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/cterence/tailout/tailout"
 	"github.com/spf13/cobra"
 )
 
-// connectCmd represents the connect command
+// connectCmd represents the connect command.
 func buildConnectCommand(app *tailout.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Args:  cobra.ArbitraryArgs,
@@ -14,7 +16,7 @@ func buildConnectCommand(app *tailout.App) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := app.Connect(args)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to connect: %w", err)
 			}
 			return nil
 		},

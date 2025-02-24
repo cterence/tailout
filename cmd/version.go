@@ -3,9 +3,9 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"github.com/cterence/tailout/tailout"
-	"github.com/spf13/cobra"
 	"runtime/debug"
+
+	"github.com/spf13/cobra"
 )
 
 func buildVersionString(buildInfo *debug.BuildInfo) string {
@@ -25,7 +25,7 @@ func buildVersionString(buildInfo *debug.BuildInfo) string {
 	return fmt.Sprintf("%s (%s)", buildInfo.Main.Version, revision)
 }
 
-func buildVersionCommand(app *tailout.App) *cobra.Command {
+func buildVersionCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Args:  cobra.ArbitraryArgs,
 		Use:   "version",
@@ -36,9 +36,8 @@ func buildVersionCommand(app *tailout.App) *cobra.Command {
 				return errors.New("unable to ReadBuildInfo(), which shouldn't happen, as Tailout should be built with module support")
 			}
 			_, err := fmt.Printf("Tailout version %s\n", buildVersionString(buildInfo))
-
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to print version: %w", err)
 			}
 			return nil
 		},
