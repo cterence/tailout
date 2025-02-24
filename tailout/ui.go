@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/cterence/tailout/internal"
 	"github.com/cterence/tailout/internal/views"
@@ -12,7 +13,7 @@ import (
 	"github.com/a-h/templ"
 )
 
-func (app *App) Ui(args []string) error {
+func (app *App) UI(args []string) error {
 	indexComponent := views.Index()
 	app.Config.NonInteractive = true
 
@@ -28,7 +29,7 @@ func (app *App) Ui(args []string) error {
 		go func() {
 			err := app.Create()
 			if err != nil {
-				slog.Error("failed to create node: " + err.Error())
+				slog.Error("failed to create node", "error", err)
 			}
 		}()
 		w.WriteHeader(http.StatusCreated)
@@ -40,7 +41,7 @@ func (app *App) Ui(args []string) error {
 		go func() {
 			err := app.Stop(nil)
 			if err != nil {
-				slog.Error("failed to create node: " + err.Error())
+				slog.Error("failed to stop nodes", "error", err)
 			}
 		}()
 		w.WriteHeader(http.StatusNoContent)
@@ -49,7 +50,7 @@ func (app *App) Ui(args []string) error {
 	http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
 		nodes, err := internal.GetActiveNodes(client)
 		if err != nil {
-			slog.Error("failed to get active nodes: " + err.Error())
+			slog.Error("failed to get active nodes", "error", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -57,20 +58,30 @@ func (app *App) Ui(args []string) error {
 		for _, node := range nodes {
 			table += fmt.Sprintf("<tr class=\"bg-white border-b\"><td class=\"px-4 py-2\">%s</td><td class=\"px-4 py-2\">%s</td><td class=\"px-4 py-2\">%s</td></tr>", node.Hostname, node.Addresses[0], node.LastSeen)
 		}
-		w.Write([]byte(table))
+		if _, err := w.Write([]byte(table)); err != nil {
+			slog.Error("failed to write response", "error", err)
+		}
 	})
 
 	http.Handle("/health", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"status": {"server": "OK"}}`))
+		if _, err := w.Write([]byte(`{"status": {"server": "OK"}}`)); err != nil {
+			slog.Error("failed to write health check response", "error", err)
+		}
 	}))
 
 	// Serve assets files
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("internal/assets"))))
 
-	slog.Info("Listening on " + app.Config.Ui.Address + ":" + app.Config.Ui.Port)
-	err = http.ListenAndServe(app.Config.Ui.Address+":"+app.Config.Ui.Port, nil)
-	if err != nil {
-		slog.Error("Failed to start server")
+	slog.Info("Server starting", "address", app.Config.UI.Address, "port", app.Config.UI.Port)
+	srv := &http.Server{
+		Addr:         app.Config.UI.Address + ":" + app.Config.UI.Port,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+
+	if err := srv.ListenAndServe(); err != nil {
+		slog.Error("Failed to start server", "error", err)
 		panic(err)
 	}
 	return nil

@@ -20,7 +20,7 @@ func (app *App) Init() error {
 	// Get the ACL configuration
 	acl, err := apiClient.ACL(context.TODO())
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get acl: %w", err)
 	}
 
 	allowTailoutSSH := tsapi.ACLSSH{
