@@ -1,0 +1,22 @@
+{
+  automerge: true,
+  automergeStrategy: "squash",
+  commitBodyTable: true,
+  configMigration: true,
+  extends: [
+    "config:best-practices",
+    "docker:enableMajor",
+    "helpers:pinGitHubActionDigests",
+    ":gitSignOff",
+    ":automergeStableNonMajor",
+    ":automergeDigest",
+    ":semanticCommitsDisabled"
+  ],
+  postUpdateOptions: [
+    "gomodTidy",
+    "gomodUpdateImportPaths"
+  ],
+  precommit: {
+    enabled: true
+  },
+}
