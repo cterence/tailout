@@ -1,4 +1,5 @@
 {
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
   automerge: true,
   automergeStrategy: "squash",
   commitBodyTable: true,
@@ -16,7 +17,7 @@
     "gomodTidy",
     "gomodUpdateImportPaths"
   ],
-  precommit: {
+  "pre-commit": {
     enabled: true
   },
 }
