@@ -3,9 +3,11 @@ package tailout
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"log"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 
@@ -27,7 +29,7 @@ func (app *App) Create() error {
 	shutdown := app.Config.Create.Shutdown
 
 	if app.Config.Tailscale.AuthKey == "" {
-		return fmt.Errorf("no tailscale auth key found")
+		return errors.New("no tailscale auth key found")
 	}
 
 	// TODO: add option for no shutdown
@@ -38,7 +40,7 @@ func (app *App) Create() error {
 
 	durationMinutes := int(duration.Minutes())
 	if durationMinutes < 1 {
-		return fmt.Errorf("duration must be at least 1 minute")
+		return errors.New("duration must be at least 1 minute")
 	}
 
 	// Create EC2 service client
@@ -49,7 +51,7 @@ func (app *App) Create() error {
 			return fmt.Errorf("failed to select region: %w", err)
 		}
 	} else if region == "" && nonInteractive {
-		return fmt.Errorf("selected non-interactive mode but no region was explicitly specified")
+		return errors.New("selected non-interactive mode but no region was explicitly specified")
 	}
 
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(region))
@@ -81,13 +83,12 @@ func (app *App) Create() error {
 		},
 		Owners: []string{"amazon"},
 	})
-
 	if err != nil {
 		return fmt.Errorf("failed to describe Amazon Linux images: %w", err)
 	}
 
 	if len(amazonLinuxImages.Images) == 0 {
-		return fmt.Errorf("no Amazon Linux images found")
+		return errors.New("no Amazon Linux images found")
 	}
 
 	sort.Slice(amazonLinuxImages.Images, func(i, j int) bool {
@@ -112,7 +113,7 @@ INSTANCE_ID=$(curl -sSL -H "X-aws-ec2-metadata-token: ${TOKEN}" http://169.254.1
 
 curl -fsSL https://tailscale.com/install.sh | sh
 sudo tailscale up --auth-key=` + app.Config.Tailscale.AuthKey + ` --hostname=tailout-` + region + `-${INSTANCE_ID} --advertise-exit-node --ssh
-sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes`
+sudo echo "sudo shutdown" | at now + ` + strconv.Itoa(durationMinutes) + ` minutes`
 
 	// Encode the string in base64
 	userDataScriptBase64 := base64.StdEncoding.EncodeToString([]byte(userDataScript))
@@ -232,7 +233,7 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 	for {
 		nodes, err := client.Devices(context.TODO())
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get devices: %w", err)
 		}
 
 		for _, node := range nodes {
@@ -243,7 +244,7 @@ sudo echo "sudo shutdown" | at now + ` + fmt.Sprint(durationMinutes) + ` minutes
 
 		// Timeouts after 2 minutes
 		if time.Now().After(timeout) {
-			return fmt.Errorf("timeout waiting for instance to join tailnet")
+			return errors.New("timeout waiting for instance to join tailnet")
 		}
 
 		time.Sleep(2 * time.Second)
@@ -266,17 +267,17 @@ found:
 	}
 
 	if len(describeResult.Reservations) == 0 {
-		return fmt.Errorf("no reservations found")
+		return errors.New("no reservations found")
 	}
 
 	reservation := describeResult.Reservations[0]
 	if len(reservation.Instances) == 0 {
-		return fmt.Errorf("no instances found")
+		return errors.New("no instances found")
 	}
 
 	instance := reservation.Instances[0]
 	if instance.PublicIpAddress == nil {
-		return fmt.Errorf("no public IP address found")
+		return errors.New("no public IP address found")
 	}
 
 	fmt.Printf("Node %s joined tailnet.\n", nodeName)

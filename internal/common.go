@@ -13,10 +13,6 @@ import (
 	"github.com/tailscale/tailscale-client-go/tailscale"
 )
 
-const (
-	baseURL = "https://api.tailscale.com"
-)
-
 func GetRegions() ([]string, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-east-1"))
 	if err != nil {
@@ -37,7 +33,7 @@ func GetRegions() ([]string, error) {
 	return regionNames, nil
 }
 
-// Function that uses promptui to return an AWS region fetched from the aws sdk
+// Function that uses promptui to return an AWS region fetched from the aws sdk.
 func SelectRegion() (string, error) {
 	regionNames, err := GetRegions()
 	if err != nil {
@@ -62,7 +58,7 @@ func SelectRegion() (string, error) {
 	return region, nil
 }
 
-// Function that uses promptui to return a boolean value
+// Function that uses promptui to return a boolean value.
 func PromptYesNo(question string) (bool, error) {
 	prompt := promptui.Select{
 		Label: question,
@@ -84,7 +80,7 @@ func PromptYesNo(question string) (bool, error) {
 func GetActiveNodes(c *tailscale.Client) ([]tailscale.Device, error) {
 	devices, err := c.Devices(context.TODO())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get devices: %w", err)
 	}
 
 	tailoutDevices := make([]tailscale.Device, 0)

@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/cterence/tailout/tailout"
 	"github.com/spf13/cobra"
 )
@@ -19,7 +21,7 @@ func buildInitCommand(app *tailout.App) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := app.Init()
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to initialize tailnet policy: %w", err)
 			}
 			return nil
 		},

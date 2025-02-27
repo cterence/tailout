@@ -1,6 +1,8 @@
 package config
 
 import (
+	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -9,19 +11,18 @@ import (
 )
 
 type Config struct {
-	Region         string `mapstructure:"region"`
-	NonInteractive bool   `mapstructure:"non_interactive"`
-	DryRun         bool   `mapstructure:"dry_run"`
-
-	Tailscale TailscaleConfig `mapstructure:"tailscale"`
-	Create    CreateConfig    `mapstructure:"create"`
-	Stop      StopConfig      `mapstructure:"stop"`
-	Ui        UiConfig        `mapstructure:"ui"`
+	Tailscale      TailscaleConfig `mapstructure:"tailscale"`
+	UI             UIConfig        `mapstructure:"ui"`
+	Region         string          `mapstructure:"region"`
+	Create         CreateConfig    `mapstructure:"create"`
+	NonInteractive bool            `mapstructure:"non_interactive"`
+	DryRun         bool            `mapstructure:"dry_run"`
+	Stop           StopConfig      `mapstructure:"stop"`
 }
 
 type CreateConfig struct {
-	Connect  bool   `mapstructure:"connect"`
 	Shutdown string `mapstructure:"shutdown"`
+	Connect  bool   `mapstructure:"connect"`
 }
 
 type TailscaleConfig struct {
@@ -35,7 +36,7 @@ type StopConfig struct {
 	All bool `mapstructure:"all"`
 }
 
-type UiConfig struct {
+type UIConfig struct {
 	Port    string `mapstructure:"port"`
 	Address string `mapstructure:"address"`
 }
@@ -53,11 +54,11 @@ func (c *Config) Load(flags *pflag.FlagSet, cmdName string) error {
 	v.AddConfigPath("$HOME/.tailout/")
 	v.AddConfigPath(".")
 
-	// Viper logs the configuration file it uses, if any.
 	err := v.ReadInConfig()
 	if err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return err
+		var configFileNotFound viper.ConfigFileNotFoundError
+		if !errors.As(err, &configFileNotFound) {
+			return fmt.Errorf("failed to read configuration file: %w", err)
 		}
 	}
 
@@ -78,23 +79,42 @@ func (c *Config) Load(flags *pflag.FlagSet, cmdName string) error {
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	bindEnvironmentVariables(v, *c)
 
-	v.BindPFlags(flags)
+	if err := v.BindPFlags(flags); err != nil {
+		return fmt.Errorf("failed to bind flags: %w", err)
+	}
 
 	// Bind tailscale and command specific nested flags and remove prefix when binding
 	// FIXME: This is a workaround for a limitation of Viper, found here:
 	// https://github.com/spf13/viper/issues/1072
+	var bindErr error
 	flags.Visit(func(f *pflag.Flag) {
+		if bindErr != nil {
+			return
+		}
 		flagName := strings.ReplaceAll(f.Name, "-", "_")
-		v.BindPFlag(cmdName+"."+f.Name, flags.Lookup(f.Name))
+		if err := v.BindPFlag(cmdName+"."+f.Name, flags.Lookup(f.Name)); err != nil {
+			bindErr = fmt.Errorf("failed to bind flag %s: %w", f.Name, err)
+			return
+		}
 		if strings.HasPrefix(flagName, "tailscale_") {
-			v.BindPFlag("tailscale."+strings.TrimPrefix(flagName, "tailscale_"), flags.Lookup(f.Name))
+			if err := v.BindPFlag("tailscale."+strings.TrimPrefix(flagName, "tailscale_"), flags.Lookup(f.Name)); err != nil {
+				bindErr = fmt.Errorf("failed to bind tailscale flag %s: %w", f.Name, err)
+				return
+			}
 		}
 	})
+	if bindErr != nil {
+		return bindErr
+	}
 
 	// Useful for debugging viper fully-merged configuration
 	// spew.Dump(v.AllSettings())
 
-	return v.Unmarshal(c)
+	if err := v.Unmarshal(c); err != nil {
+		return fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+
+	return nil
 }
 
 // bindEnvironmentVariables inspects iface's structure and recursively binds its
@@ -104,7 +124,7 @@ func (c *Config) Load(flags *pflag.FlagSet, cmdName string) error {
 func bindEnvironmentVariables(v *viper.Viper, iface interface{}, parts ...string) {
 	ifv := reflect.ValueOf(iface)
 	ift := reflect.TypeOf(iface)
-	for i := 0; i < ift.NumField(); i++ {
+	for i := range ift.NumField() {
 		val := ifv.Field(i)
 		typ := ift.Field(i)
 		tv, ok := typ.Tag.Lookup("mapstructure")
@@ -115,7 +135,9 @@ func bindEnvironmentVariables(v *viper.Viper, iface interface{}, parts ...string
 		case reflect.Struct:
 			bindEnvironmentVariables(v, val.Interface(), append(parts, tv)...)
 		default:
-			v.BindEnv(strings.Join(append(parts, tv), "."))
+			if err := v.BindEnv(strings.Join(append(parts, tv), ".")); err != nil {
+				panic(fmt.Sprintf("failed to bind environment variable %s: %v", strings.Join(append(parts, tv), "."), err))
+			}
 		}
 	}
 }
