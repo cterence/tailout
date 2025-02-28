@@ -4,28 +4,36 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 
 	"github.com/cterence/tailout/internal"
-	tsapi "github.com/tailscale/tailscale-client-go/tailscale"
+	tsapi "tailscale.com/client/tailscale/v2"
 )
 
 func (app *App) Init() error {
 	dryRun := app.Config.DryRun
 	nonInteractive := app.Config.NonInteractive
 
-	apiClient, err := tsapi.NewClient(app.Config.Tailscale.APIKey, app.Config.Tailscale.Tailnet, tsapi.WithBaseURL(app.Config.Tailscale.BaseURL))
+	baseURL, err := url.Parse(app.Config.Tailscale.BaseURL)
 	if err != nil {
-		return fmt.Errorf("failed to create tailscale client: %w", err)
+		return fmt.Errorf("failed to parse base URL: %w", err)
 	}
+
+	apiClient := &tsapi.Client{
+		APIKey:  app.Config.Tailscale.APIKey,
+		Tailnet: app.Config.Tailscale.Tailnet,
+		BaseURL: baseURL,
+	}
+
 	// Get the ACL configuration
-	acl, err := apiClient.ACL(context.TODO())
+	acl, err := apiClient.PolicyFile().Get(context.TODO())
 	if err != nil {
 		return fmt.Errorf("failed to get acl: %w", err)
 	}
 
 	allowTailoutSSH := tsapi.ACLSSH{
 		Action:      "check",
-		Source:      []string{"autogroup:members"},
+		Source:      []string{"autogroup:member"},
 		Destination: []string{"tag:tailout"},
 		Users:       []string{"autogroup:nonroot", "root"},
 	}
@@ -33,7 +41,7 @@ func (app *App) Init() error {
 	tailoutSSHConfigExists, tailoutTagExists, tailoutAutoApproversExists := false, false, false
 
 	for _, sshConfig := range acl.SSH {
-		if sshConfig.Action == "check" && sshConfig.Source[0] == "autogroup:members" && sshConfig.Destination[0] == "tag:tailout" && sshConfig.Users[0] == "autogroup:nonroot" && sshConfig.Users[1] == "root" {
+		if sshConfig.Action == "check" && sshConfig.Source[0] == "autogroup:member" && sshConfig.Destination[0] == "tag:tailout" && sshConfig.Users[0] == "autogroup:nonroot" && sshConfig.Users[1] == "root" {
 			tailoutSSHConfigExists = true
 		}
 	}
@@ -43,6 +51,11 @@ func (app *App) Init() error {
 		tailoutTagExists = true
 	} else {
 		acl.TagOwners["tag:tailout"] = []string{}
+	}
+
+	if acl.AutoApprovers == nil {
+		fmt.Println("Auto approvers configuration does not exist.")
+		acl.AutoApprovers = &tsapi.ACLAutoApprovers{}
 	}
 
 	for _, exitNode := range acl.AutoApprovers.ExitNode {
@@ -68,7 +81,7 @@ func (app *App) Init() error {
 	}
 
 	// Validate the updated acl configuration
-	err = apiClient.ValidateACL(context.TODO(), acl)
+	err = apiClient.PolicyFile().Validate(context.TODO(), *acl)
 	if err != nil {
 		return fmt.Errorf("failed to validate acl: %w", err)
 	}
@@ -103,7 +116,7 @@ Your new acl document will look like this:
 			}
 		}
 
-		err = apiClient.SetACL(context.TODO(), acl)
+		err = apiClient.PolicyFile().Set(context.TODO(), *acl, "")
 		if err != nil {
 			return fmt.Errorf("failed to update acl: %w", err)
 		}

@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/cterence/tailout/internal"
 	"github.com/cterence/tailout/internal/views"
-	"github.com/tailscale/tailscale-client-go/tailscale"
+	tsapi "tailscale.com/client/tailscale/v2"
 
 	"github.com/a-h/templ"
 )
@@ -17,9 +18,15 @@ func (app *App) UI(args []string) error {
 	indexComponent := views.Index()
 	app.Config.NonInteractive = true
 
-	client, err := tailscale.NewClient(app.Config.Tailscale.APIKey, app.Config.Tailscale.Tailnet)
+	baseURL, err := url.Parse(app.Config.Tailscale.BaseURL)
 	if err != nil {
-		return fmt.Errorf("failed to create tailscale client: %w", err)
+		return fmt.Errorf("failed to parse base URL: %w", err)
+	}
+
+	client := &tsapi.Client{
+		APIKey:  app.Config.Tailscale.APIKey,
+		Tailnet: app.Config.Tailscale.Tailnet,
+		BaseURL: baseURL,
 	}
 
 	http.Handle("/", templ.Handler(indexComponent))

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/url"
 	"sort"
 	"strconv"
 	"sync"
@@ -18,7 +19,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/cterence/tailout/internal"
-	"github.com/tailscale/tailscale-client-go/tailscale"
+	tsapi "tailscale.com/client/tailscale/v2"
 )
 
 func (app *App) Create() error {
@@ -225,13 +226,19 @@ sudo echo "sudo shutdown" | at now + ` + strconv.Itoa(durationMinutes) + ` minut
 
 	timeout := time.Now().Add(3 * time.Minute)
 
-	client, err := tailscale.NewClient(app.Config.Tailscale.APIKey, app.Config.Tailscale.Tailnet, tailscale.WithBaseURL(app.Config.Tailscale.BaseURL))
+	baseURL, err := url.Parse(app.Config.Tailscale.BaseURL)
 	if err != nil {
-		return fmt.Errorf("failed to create tailscale client: %w", err)
+		return fmt.Errorf("failed to parse base URL: %w", err)
+	}
+
+	client := &tsapi.Client{
+		APIKey:  app.Config.Tailscale.APIKey,
+		Tailnet: app.Config.Tailscale.Tailnet,
+		BaseURL: baseURL,
 	}
 
 	for {
-		nodes, err := client.Devices(context.TODO())
+		nodes, err := client.Devices().List(context.TODO())
 		if err != nil {
 			return fmt.Errorf("failed to get devices: %w", err)
 		}

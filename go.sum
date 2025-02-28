@@ -171,8 +171,6 @@ github.com/tailscale/hujson v0.0.0-20221223112325-20486734a56a h1:SJy1Pu0eH1C29X
 github.com/tailscale/hujson v0.0.0-20221223112325-20486734a56a/go.mod h1:DFSS3NAGHthKo1gTlmEcSBiZrRJXi28rLNd/1udP1c8=
 github.com/tailscale/netlink v1.1.1-0.20240822203006-4d49adab4de7 h1:uFsXVBE9Qr4ZoF094vE6iYTLDl0qCiKzYXlL6UeWObU=
 github.com/tailscale/netlink v1.1.1-0.20240822203006-4d49adab4de7/go.mod h1:NzVQi3Mleb+qzq8VmcWpSkcSYxXIg0DkI6XDzpVkhJ0=
-github.com/tailscale/tailscale-client-go v1.17.0 h1:4ZTsfB2hiiiIcx7prcXapZHO5K+TXB5fTdhGxdKGR88=
-github.com/tailscale/tailscale-client-go v1.17.0/go.mod h1:Zxz9AWl4cNX8F+jE7iIeo6Me7dGPXNdCFIoVeovH6eI=
 github.com/tailscale/wireguard-go v0.0.0-20250107165329-0b8b35511f19 h1:BcEJP2ewTIK2ZCsqgl6YGpuO6+oKqqag5HHb7ehljKw=
 github.com/tailscale/wireguard-go v0.0.0-20250107165329-0b8b35511f19/go.mod h1:BOm5fXUBFM+m9woLNBoxI9TaBXXhGNP50LX/TGIvGb4=
 github.com/vishvananda/netns v0.0.4 h1:Oeaw1EM2JMxD51g9uhtC0D7erkIjgmj8+JZc26m1YX8=
@@ -248,3 +246,5 @@ gvisor.dev/gvisor v0.0.0-20240722211153-64c016c92987 h1:TU8z2Lh3Bbq77w0t1eG8yRlL
 gvisor.dev/gvisor v0.0.0-20240722211153-64c016c92987/go.mod h1:sxc3Uvk/vHcd3tj7/DHVBoR5wvWT/MmRq2pj7HRJnwU=
 tailscale.com v1.80.2 h1:MA/AvAyWakq01E1MS6SwKEp2VEFE5CoXAAguwrnbF5g=
 tailscale.com v1.80.2/go.mod h1:HTOFVeo5RY0qBl5Uy+LXHwgp0PLXgVSfgqWI34gSrPA=
+tailscale.com/client/tailscale/v2 v2.0.0-20250222012233-b9e1df8625a0 h1:i/144roIAZ09jIXWg6TcBkKPonHWYv9OI8t8pf71ohM=
+tailscale.com/client/tailscale/v2 v2.0.0-20250222012233-b9e1df8625a0/go.mod h1:sK/56NFdQmVg2sR8gA3X9aPM/uYqhxxRZGyZhlcpHrY=

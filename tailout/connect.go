@@ -5,12 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"net/netip"
+	"net/url"
 	"slices"
 
 	"github.com/cterence/tailout/internal"
 	"github.com/manifoldco/promptui"
-	tsapi "github.com/tailscale/tailscale-client-go/tailscale"
 	"tailscale.com/client/tailscale"
+	tsapi "tailscale.com/client/tailscale/v2"
 	"tailscale.com/ipn"
 	"tailscale.com/tailcfg"
 )
@@ -20,9 +21,15 @@ func (app *App) Connect(args []string) error {
 
 	nonInteractive := app.Config.NonInteractive
 
-	apiClient, err := tsapi.NewClient(app.Config.Tailscale.APIKey, app.Config.Tailscale.Tailnet, tsapi.WithBaseURL(app.Config.Tailscale.BaseURL))
+	baseURL, err := url.Parse(app.Config.Tailscale.BaseURL)
 	if err != nil {
-		return fmt.Errorf("failed to create tailscale client: %w", err)
+		return fmt.Errorf("failed to parse base URL: %w", err)
+	}
+
+	apiClient := &tsapi.Client{
+		APIKey:  app.Config.Tailscale.APIKey,
+		Tailnet: app.Config.Tailscale.Tailnet,
+		BaseURL: baseURL,
 	}
 
 	var deviceToConnectTo tsapi.Device
