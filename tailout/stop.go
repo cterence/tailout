@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -13,7 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/cterence/tailout/internal"
 	"github.com/ktr0731/go-fuzzyfinder"
-	"github.com/tailscale/tailscale-client-go/tailscale"
+	tsapi "tailscale.com/client/tailscale/v2"
 )
 
 func (app *App) Stop(args []string) error {
@@ -21,11 +22,17 @@ func (app *App) Stop(args []string) error {
 	dryRun := app.Config.DryRun
 	stopAll := app.Config.Stop.All
 
-	nodesToStop := []tailscale.Device{}
+	nodesToStop := []tsapi.Device{}
 
-	client, err := tailscale.NewClient(app.Config.Tailscale.APIKey, app.Config.Tailscale.Tailnet, tailscale.WithBaseURL(app.Config.Tailscale.BaseURL))
+	baseURL, err := url.Parse(app.Config.Tailscale.BaseURL)
 	if err != nil {
-		return fmt.Errorf("failed to create tailscale client: %w", err)
+		return fmt.Errorf("failed to parse base URL: %w", err)
+	}
+
+	client := &tsapi.Client{
+		APIKey:  app.Config.Tailscale.APIKey,
+		Tailnet: app.Config.Tailscale.Tailnet,
+		BaseURL: baseURL,
 	}
 
 	tailoutNodes, err := internal.GetActiveNodes(client)
@@ -47,7 +54,7 @@ func (app *App) Stop(args []string) error {
 			return fmt.Errorf("failed to find node: %w", err)
 		}
 
-		nodesToStop = []tailscale.Device{}
+		nodesToStop = []tsapi.Device{}
 		for _, i := range idx {
 			nodesToStop = append(nodesToStop, tailoutNodes[i])
 		}
@@ -124,7 +131,7 @@ func (app *App) Stop(args []string) error {
 
 		fmt.Println("Successfully terminated instance", node.Hostname)
 
-		err = client.DeleteDevice(context.TODO(), node.ID)
+		err = client.Devices().Delete(context.TODO(), node.ID)
 		if err != nil {
 			return fmt.Errorf("failed to delete node from tailnet: %w", err)
 		}

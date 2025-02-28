@@ -24,7 +24,6 @@ type CreateConfig struct {
 	Shutdown string `mapstructure:"shutdown"`
 	Connect  bool   `mapstructure:"connect"`
 }
-
 type TailscaleConfig struct {
 	BaseURL string `mapstructure:"base_url"`
 	AuthKey string `mapstructure:"auth_key"`

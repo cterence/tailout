@@ -6,17 +6,24 @@ import (
 	"io"
 	"net/http"
 	"net/netip"
+	"net/url"
 	"slices"
 
 	"github.com/cterence/tailout/internal"
-	tsapi "github.com/tailscale/tailscale-client-go/tailscale"
 	"tailscale.com/client/tailscale"
+	tsapi "tailscale.com/client/tailscale/v2"
 )
 
 func (app *App) Status() error {
-	client, err := tsapi.NewClient(app.Config.Tailscale.APIKey, app.Config.Tailscale.Tailnet, tsapi.WithBaseURL(app.Config.Tailscale.BaseURL))
+	baseURL, err := url.Parse(app.Config.Tailscale.BaseURL)
 	if err != nil {
-		return fmt.Errorf("failed to create tailscale client: %w", err)
+		return fmt.Errorf("failed to parse base URL: %w", err)
+	}
+
+	client := &tsapi.Client{
+		APIKey:  app.Config.Tailscale.APIKey,
+		Tailnet: app.Config.Tailscale.Tailnet,
+		BaseURL: baseURL,
 	}
 
 	nodes, err := internal.GetActiveNodes(client)

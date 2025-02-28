@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/manifoldco/promptui"
-	"github.com/tailscale/tailscale-client-go/tailscale"
+	tsapi "tailscale.com/client/tailscale/v2"
 )
 
 func GetRegions() ([]string, error) {
@@ -77,13 +77,13 @@ func PromptYesNo(question string) (bool, error) {
 	return false, nil
 }
 
-func GetActiveNodes(c *tailscale.Client) ([]tailscale.Device, error) {
-	devices, err := c.Devices(context.TODO())
+func GetActiveNodes(c *tsapi.Client) ([]tsapi.Device, error) {
+	devices, err := c.Devices().List(context.TODO())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get devices: %w", err)
 	}
 
-	tailoutDevices := make([]tailscale.Device, 0)
+	tailoutDevices := make([]tsapi.Device, 0)
 	for _, device := range devices {
 		for _, tag := range device.Tags {
 			if tag == "tag:tailout" {
