@@ -1,0 +1,138 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "*"
+  pull_request:
+    branches:
+      - main
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+concurrency:
+  group: ${{ github.ref_name }}-ci
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  binary:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Golang Environment
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
+        with:
+          go-version: stable
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@90a3faa9d0182683851fbfa97ca1a2cb983bfca3 # v6.2.1
+        with:
+          version: latest
+          args: ${{ github.ref_type == 'tag' && 'release' || 'build --snapshot' }} --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-and-push-image:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+      security-events: write
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
+    needs: binary
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@4574d27a4764455b42196d70a065bc6853246a25 # v3.4.0
+
+      - name: Docker Buildx
+        uses: docker/setup-buildx-action@f7ce87c1d6bead3e36075b2ce75da1f6cc28aaca # v3.9.0
+        with:
+          version: latest
+          driver-opts: network=host
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+        if: github.event_name != 'pull_request'
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96 # v5.6.1
+        with:
+          images: |
+            name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},enable=${{ github.event_name != 'pull_request' }}
+            name=localhost:5000/tailout/tailout-local
+          tags: |
+            type=edge
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+
+      - name: Build and push Docker image
+        id: push
+        uses: docker/build-push-action@ca877d9245402d1537745e0e356eab47c3520991 # v6.13.0
+        with:
+          context: .
+          push: true
+          pull: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          cache-from: type=gha,scope=tailout
+          cache-to: type=gha,scope=tailout,mode=max
+          no-cache: ${{ github.event_name != 'pull_request' }}
+          provenance: mode=max
+          sbom: true
+
+      - name: Inspect SBOM and output manifest
+        run: |
+          docker buildx imagetools inspect localhost:5000/tailout/tailout-local:${{ steps.meta.outputs.version }} --format '{{ json (index .SBOM "linux/amd64").SPDX }}' > sbom.json
+          docker buildx imagetools inspect localhost:5000/tailout/tailout-local:${{ steps.meta.outputs.version }} --raw
+
+      - name: Scan SBOM
+        id: scan
+        uses: anchore/scan-action@7c05671ae9be166aeb155bad2d7df9121823df32 # v6.1.0
+        with:
+          sbom: "sbom.json"
+          only-fixed: true
+          add-cpes-if-none: true
+          fail-build: false
+
+      - name: Upload scan result to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@9e8d0789d4a0fa9ceb6b1738f7e269594bdd67f0 # v3.28.9
+        continue-on-error: true
+        with:
+          sarif_file: ${{ steps.scan.outputs.sarif }}
+
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@520d128f165991a6c774bcb264f323e3d70747f4 # v2.2.0
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+        if: github.event_name != 'pull_request'
