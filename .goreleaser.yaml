@@ -7,14 +7,23 @@ builds:
       - darwin
       - windows
     binary: tailout
+
 archives:
   - format_overrides:
       - goos: windows
         formats: ['zip']
+
+sboms:
+  - artifacts: archive
+    documents:
+      - "${artifact}.spdx.json"
+
 checksum:
   name_template: "checksums.txt"
+
 snapshot:
   version_template: "{{ .Tag }}-next"
+
 changelog:
   sort: asc
   use: github
