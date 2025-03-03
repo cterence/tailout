@@ -1,4 +1,4 @@
-[![CI](https://github.com/cterence/tailout/actions/workflows/ci.yml/badge.svg)](https://github.com/cterence/tailout/actions/workflows/ci.yml)
+[![CI](https://github.com/cterence/tailout/actions/workflows/ci.yaml/badge.svg)](https://github.com/cterence/tailout/actions/workflows/ci.yaml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/cterence/tailout)](https://goreportcard.com/report/github.com/cterence/tailout)
 
 # tailout
