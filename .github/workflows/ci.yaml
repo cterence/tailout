@@ -13,6 +13,19 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  # tailout environment variables
+  TAILOUT_REGION: eu-west-3
+  TAILOUT_NON_INTERACTIVE: "true"
+  TAILOUT_CREATE_CONNECT: "true"
+  TAILOUT_CREATE_SHUTDOWN: 5m
+  TAILOUT_TAILSCALE_TAILNET: ${{ secrets.TAILSCALE_TAILNET }}
+  TAILOUT_TAILSCALE_API_KEY: ${{ secrets.TAILSCALE_API_KEY }}
+  TAILOUT_TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
+
+
+defaults:
+  run:
+    shell: bash
 
 concurrency:
   group: ${{ github.ref_name }}-ci
@@ -22,10 +35,33 @@ permissions:
   contents: read
 
 jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Golang Environment
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
+        with:
+          go-version: stable
+
+      - name: Generate templ code
+        uses: capthiron/templ-generator-action@f1f7b5d0b261eccff32fa3fc17cf563d993fee94 # v1
+        with:
+          commit: "false"
+          setup-go: "false"
+          directory: "internal/views"
+
+      - name: Check if templ code is up to date
+        run: git diff --exit-code
+
   binary:
     runs-on: ubuntu-24.04
     permissions:
-      contents: read
+      contents: write
+      id-token: write
+    needs: checks
     steps:
       - name: Checkout repository
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -44,6 +80,12 @@ jobs:
           args: ${{ github.ref_type == 'tag' && 'release' || 'build --snapshot' }} --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cache Artifacts
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+        with:
+          path: ${{ github.workspace }}/dist
+          key: tailout-${{ github.run_id }}-${{ github.run_number }}
 
   build-and-push-image:
     runs-on: ubuntu-24.04
@@ -136,3 +178,66 @@ jobs:
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
         if: github.event_name != 'pull_request'
+
+  e2e-tests:
+    runs-on: ubuntu-24.04
+    if: ${{ github.event.repository.fork == false && github.actor != 'renovate[bot]' }}
+    needs: binary
+    permissions:
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - first_command: "tailout init"
+          - first_command: "tailout create"
+            second_command: "tailout status"
+            third_command: "tailout disconnect"
+          - first_command: "tailout create"
+            second_command: "tailout disconnect"
+            third_command: "tailout status"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup environment
+        uses: ./.github/actions/setup
+        with:
+          region: ${{ env.TAILOUT_REGION }}
+          role_arn: ${{ secrets.AWS_GITHUB_ACTIONS_TAILOUT_ROLE_ARN }}
+          tailscale_oauth_client_id: ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
+          tailscale_oauth_client_secret: ${{ secrets.TAILSCALE_OAUTH_CLIENT_SECRET }}
+      - name: First command
+        run: ${{ matrix.first_command }}
+      - name: Second command
+        if: ${{ matrix.second_command != '' }}
+        run: ${{ matrix.second_command }}
+      - name: Third command
+        if: ${{ matrix.third_command != '' }}
+        run: ${{ matrix.third_command }}
+      # TODO: check if the public IP address matches the one from the new instance
+
+  # TODO: find a better concurrency pattern
+  cleanup:
+    runs-on: ubuntu-24.04
+    if: ${{ github.event.repository.fork == false && github.actor != 'renovate[bot]' }}
+    needs: e2e-tests
+    concurrency:
+      group: cleanup
+      cancel-in-progress: true
+    permissions:
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup environment
+        uses: ./.github/actions/setup
+        with:
+          region: ${{ env.TAILOUT_REGION }}
+          role_arn: ${{ secrets.AWS_GITHUB_ACTIONS_TAILOUT_ROLE_ARN }}
+          tailscale_oauth_client_id: ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
+          tailscale_oauth_client_secret: ${{ secrets.TAILSCALE_OAUTH_CLIENT_SECRET }}
+      - name: Cleanup
+        run: tailout stop --all
+      # TODO: Add cleanup for github nodes as well
