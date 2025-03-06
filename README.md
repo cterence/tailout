@@ -32,18 +32,14 @@ Go to your [Tailscale API key settings](https://login.tailscale.com/admin/settin
 
 - Create an API key for `tailout`
 - Create a file in `~/.tailout/config.yaml` with the following content:
+
   ```yaml
   tailscale:
     api_key: tskey-api-xxx-xxx
     tailnet: <your tailnet name>
   ```
+
 - Run `tailout init`, review the changes that will be done to your policy and accept
-- Go back to your [Tailscale API key settings](https://login.tailscale.com/admin/settings/keys)
-- Create an auth key with the following characteristics:
-  - Is reusable
-  - Is ephemeral
-  - Automatically adds the newly created `tag:tailout` tag to each device
-- Add your auth key to the config file
 
 Next, you will also need to set up your AWS credentials. tailout will look for default credentials, like environment variables for access keys or an AWS profile.
 
