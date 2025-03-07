@@ -17,7 +17,7 @@ import (
 	tsapi "tailscale.com/client/tailscale/v2"
 )
 
-func (app *App) Stop(args []string) error {
+func (app *App) Stop(ctx context.Context, args []string) error {
 	nonInteractive := app.Config.NonInteractive
 	dryRun := app.Config.DryRun
 	stopAll := app.Config.Stop.All
@@ -35,7 +35,7 @@ func (app *App) Stop(args []string) error {
 		BaseURL: baseURL,
 	}
 
-	tailoutNodes, err := internal.GetActiveNodes(client)
+	tailoutNodes, err := internal.GetActiveNodes(ctx, client)
 	if err != nil {
 		return fmt.Errorf("failed to get active nodes: %w", err)
 	}
@@ -94,7 +94,7 @@ func (app *App) Stop(args []string) error {
 	for _, node := range nodesToStop {
 		fmt.Println("Stopping", node.Hostname)
 
-		regionNames, err := internal.GetRegions()
+		regionNames, err := internal.GetRegions(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to retrieve regions: %w", err)
 		}
@@ -110,7 +110,7 @@ func (app *App) Stop(args []string) error {
 		}
 
 		// Create a session to share configuration, and load external configuration.
-		cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(region))
+		cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
 		if err != nil {
 			log.Fatalf("unable to load SDK config, %v", err)
 		}
@@ -121,7 +121,7 @@ func (app *App) Stop(args []string) error {
 
 		instanceID := regexp.MustCompile(`i\-[a-z0-9]{17}$`).FindString(node.Hostname)
 
-		_, err = ec2Svc.TerminateInstances(context.TODO(), &ec2.TerminateInstancesInput{
+		_, err = ec2Svc.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
 			DryRun:      aws.Bool(dryRun),
 			InstanceIds: []string{instanceID},
 		})
@@ -131,7 +131,7 @@ func (app *App) Stop(args []string) error {
 
 		fmt.Println("Successfully terminated instance", node.Hostname)
 
-		err = client.Devices().Delete(context.TODO(), node.ID)
+		err = client.Devices().Delete(ctx, node.ID)
 		if err != nil {
 			return fmt.Errorf("failed to delete node from tailnet: %w", err)
 		}

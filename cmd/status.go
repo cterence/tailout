@@ -18,7 +18,7 @@ func buildStatusCommand(app *tailout.App) *cobra.Command {
 
 		Example : tailout status`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			err := app.Status()
+			err := app.Status(cmd.Context())
 			if err != nil {
 				return fmt.Errorf("failed to show status: %w", err)
 			}
