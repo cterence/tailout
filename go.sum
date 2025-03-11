@@ -246,5 +246,5 @@ gvisor.dev/gvisor v0.0.0-20240722211153-64c016c92987 h1:TU8z2Lh3Bbq77w0t1eG8yRlL
 gvisor.dev/gvisor v0.0.0-20240722211153-64c016c92987/go.mod h1:sxc3Uvk/vHcd3tj7/DHVBoR5wvWT/MmRq2pj7HRJnwU=
 tailscale.com v1.80.3 h1:uGLWZdl61YbhvhoU6qdnHPF7zuuqGGRaTfbECur035Y=
 tailscale.com v1.80.3/go.mod h1:HTOFVeo5RY0qBl5Uy+LXHwgp0PLXgVSfgqWI34gSrPA=
-tailscale.com/client/tailscale/v2 v2.0.0-20250304204132-110cd8a89391 h1:YEtyTpBHu8lwiShgYXcJVAbONsiAf1vJk8yTe41WVw0=
-tailscale.com/client/tailscale/v2 v2.0.0-20250304204132-110cd8a89391/go.mod h1:sK/56NFdQmVg2sR8gA3X9aPM/uYqhxxRZGyZhlcpHrY=
+tailscale.com/client/tailscale/v2 v2.0.0-20250311144508-3a768d66e695 h1:Cs09fwbXp74IEzLN6iXDdTCjNKV4YOlGD5Z/f5FmTL0=
+tailscale.com/client/tailscale/v2 v2.0.0-20250311144508-3a768d66e695/go.mod h1:sK/56NFdQmVg2sR8gA3X9aPM/uYqhxxRZGyZhlcpHrY=
