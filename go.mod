@@ -7,7 +7,7 @@ require (
 	github.com/adhocore/chin v1.1.0
 	github.com/aws/aws-sdk-go-v2 v1.36.3
 	github.com/aws/aws-sdk-go-v2/config v1.29.9
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.207.1
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.209.0
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.17
 	github.com/ktr0731/go-fuzzyfinder v0.8.0
 	github.com/manifoldco/promptui v0.9.0
@@ -15,7 +15,7 @@ require (
 	github.com/spf13/pflag v1.0.6
 	github.com/spf13/viper v1.19.0
 	tailscale.com v1.80.3
-	tailscale.com/client/tailscale/v2 v2.0.0-20250304204132-110cd8a89391
+	tailscale.com/client/tailscale/v2 v2.0.0-20250311144508-3a768d66e695
 )
 
 require (

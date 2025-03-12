@@ -22,8 +22,8 @@ github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.34 h1:SZwFm17ZUNNg5Np0io
 github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.34/go.mod h1:dFZsC0BLo346mvKQLWmoJxT+Sjp+qcVR1tRVHQGOH9Q=
 github.com/aws/aws-sdk-go-v2/internal/ini v1.8.3 h1:bIqFDwgGXXN1Kpp99pDOdKMTTb5d2KyU5X/BZxjOkRo=
 github.com/aws/aws-sdk-go-v2/internal/ini v1.8.3/go.mod h1:H5O/EsxDWyU+LP/V8i5sm8cxoZgc2fdNR9bxlOFrQTo=
-github.com/aws/aws-sdk-go-v2/service/ec2 v1.207.1 h1:yIbrcRq0nKF75IlSiUlo4g/Qe3RzGBdDCR+WRZLf5IE=
-github.com/aws/aws-sdk-go-v2/service/ec2 v1.207.1/go.mod h1:ouvGEfHbLaIlWwpDpOVWPWR+YwO0HDv3vm5tYLq8ImY=
+github.com/aws/aws-sdk-go-v2/service/ec2 v1.209.0 h1:WpLv8X3/Ct0ZRvx8QL91V9ndnIOi1WDfz0+F4ZEKwns=
+github.com/aws/aws-sdk-go-v2/service/ec2 v1.209.0/go.mod h1:ouvGEfHbLaIlWwpDpOVWPWR+YwO0HDv3vm5tYLq8ImY=
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.12.3 h1:eAh2A4b5IzM/lum78bZ590jy36+d/aFLgKF/4Vd1xPE=
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.12.3/go.mod h1:0yKJC/kb8sAnmlYa6Zs3QVYqaC8ug2AbnNChv5Ox3uA=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.12.15 h1:dM9/92u2F1JbDaGooxTq18wmmFzbJRfXfVfy96/1CXM=
@@ -246,5 +246,5 @@ gvisor.dev/gvisor v0.0.0-20240722211153-64c016c92987 h1:TU8z2Lh3Bbq77w0t1eG8yRlL
 gvisor.dev/gvisor v0.0.0-20240722211153-64c016c92987/go.mod h1:sxc3Uvk/vHcd3tj7/DHVBoR5wvWT/MmRq2pj7HRJnwU=
 tailscale.com v1.80.3 h1:uGLWZdl61YbhvhoU6qdnHPF7zuuqGGRaTfbECur035Y=
 tailscale.com v1.80.3/go.mod h1:HTOFVeo5RY0qBl5Uy+LXHwgp0PLXgVSfgqWI34gSrPA=
-tailscale.com/client/tailscale/v2 v2.0.0-20250304204132-110cd8a89391 h1:YEtyTpBHu8lwiShgYXcJVAbONsiAf1vJk8yTe41WVw0=
-tailscale.com/client/tailscale/v2 v2.0.0-20250304204132-110cd8a89391/go.mod h1:sK/56NFdQmVg2sR8gA3X9aPM/uYqhxxRZGyZhlcpHrY=
+tailscale.com/client/tailscale/v2 v2.0.0-20250311144508-3a768d66e695 h1:Cs09fwbXp74IEzLN6iXDdTCjNKV4YOlGD5Z/f5FmTL0=
+tailscale.com/client/tailscale/v2 v2.0.0-20250311144508-3a768d66e695/go.mod h1:sK/56NFdQmVg2sR8gA3X9aPM/uYqhxxRZGyZhlcpHrY=
