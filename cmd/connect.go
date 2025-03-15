@@ -14,7 +14,7 @@ func buildConnectCommand(app *tailout.App) *cobra.Command {
 		Use:   "connect",
 		Short: "Connect to an exit node in your tailnet",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			err := app.Connect(args)
+			err := app.Connect(cmd.Context(), args)
 			if err != nil {
 				return fmt.Errorf("failed to connect: %w", err)
 			}
