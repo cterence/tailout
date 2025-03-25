@@ -1,10 +1,10 @@
-FROM golang:1.24.1@sha256:c5adecdb7b3f8c5ca3c88648a861882849cc8b02fed68ece31e25de88ad13418 as fetch-stage
+FROM golang:1.24.1@sha256:52ff1b35ff8de185bf9fd26c70077190cd0bed1e9f16a2d498ce907e5c421268 as fetch-stage
 
 COPY go.mod go.sum /app/
 WORKDIR /app
 RUN go mod download
 
-FROM ghcr.io/a-h/templ:latest@sha256:570e4837721ae42dfb77320501fc6e7e4a48a713d09a9575334afcd9f2cca43a AS generate-stage
+FROM ghcr.io/a-h/templ:latest@sha256:e603e0e1a6caa989fbb60c829d84ab9e357c805334cba130e0abe323628fc53b AS generate-stage
 COPY --chown=65532:65532 . /app
 WORKDIR /app
 RUN ["templ", "generate"]
@@ -16,12 +16,12 @@ WORKDIR /app
 EXPOSE 3000
 ENTRYPOINT ["air"]
 
-FROM golang:1.24.1@sha256:c5adecdb7b3f8c5ca3c88648a861882849cc8b02fed68ece31e25de88ad13418 AS build-stage
+FROM golang:1.24.1@sha256:52ff1b35ff8de185bf9fd26c70077190cd0bed1e9f16a2d498ce907e5c421268 AS build-stage
 COPY --from=generate-stage /app /app
 WORKDIR /app
 RUN CGO_ENABLED=0 GOOS=linux go build -buildvcs=false -o /app/app
 
-FROM gcr.io/distroless/base-debian12@sha256:74ddbf52d93fafbdd21b399271b0b4aac1babf8fa98cab59e5692e01169a1348 AS deploy-stage
+FROM gcr.io/distroless/base-debian12@sha256:125eb09bbd8e818da4f9eac0dfc373892ca75bec4630aa642d315ecf35c1afb7 AS deploy-stage
 WORKDIR /
 COPY --from=build-stage /app/app /app
 EXPOSE 3000
