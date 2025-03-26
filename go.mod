@@ -13,7 +13,7 @@ require (
 	github.com/manifoldco/promptui v0.9.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
-	github.com/spf13/viper v1.20.0
+	github.com/spf13/viper v1.20.1
 	tailscale.com v1.80.3
 	tailscale.com/client/tailscale/v2 v2.0.0-20250311144508-3a768d66e695
 )
