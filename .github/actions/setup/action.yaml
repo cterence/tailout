@@ -33,7 +33,7 @@ runs:
         role-session-name: tailout-${{ github.job }}
         aws-region: ${{ inputs.region }}
     - name: Connect runner to tailscale
-      uses: tailscale/github-action@93605f7b8f223bf5f44e83275e64fb28f3e49d9e # v3
+      uses: tailscale/github-action@9a0fda8cbbdb68f6c385f8121ae24d9f3d6195ed # v3
       with:
         oauth-client-id: ${{ inputs.tailscale_oauth_client_id }}
         oauth-secret: ${{ inputs.tailscale_oauth_client_secret }}
