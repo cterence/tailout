@@ -10,9 +10,9 @@ import (
 	"tailscale.com/ipn"
 )
 
-func (app *App) Disconnect() error {
+func (app *App) Disconnect(ctx context.Context) error {
 	var localClient tailscale.LocalClient
-	prefs, err := localClient.GetPrefs(context.TODO())
+	prefs, err := localClient.GetPrefs(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get prefs: %w", err)
 	}
@@ -26,7 +26,7 @@ func (app *App) Disconnect() error {
 	disconnectPrefs.ExitNodeID = ""
 	disconnectPrefs.ExitNodeIP = netip.Addr{}
 
-	_, err = localClient.EditPrefs(context.TODO(), &ipn.MaskedPrefs{
+	_, err = localClient.EditPrefs(ctx, &ipn.MaskedPrefs{
 		Prefs:         *disconnectPrefs,
 		ExitNodeIDSet: true,
 		ExitNodeIPSet: true,
