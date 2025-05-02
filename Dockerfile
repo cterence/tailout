@@ -4,7 +4,7 @@ COPY go.mod go.sum /app/
 WORKDIR /app
 RUN go mod download
 
-FROM ghcr.io/a-h/templ:latest@sha256:e603e0e1a6caa989fbb60c829d84ab9e357c805334cba130e0abe323628fc53b AS generate-stage
+FROM ghcr.io/a-h/templ:latest@sha256:70d331b338d330db78296226a8952c86792100013e12125b6faf677aba7ecb37 AS generate-stage
 COPY --chown=65532:65532 . /app
 WORKDIR /app
 RUN ["templ", "generate"]
