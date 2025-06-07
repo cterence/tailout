@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/cterence/tailout/cmd"
 	"github.com/cterence/tailout/tailout"
@@ -15,7 +18,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := cmd.New(app).Execute(); err != nil {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Handle signals
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-sigCh
+		cancel()
+	}()
+
+	if err := cmd.New(app).ExecuteContext(ctx); err != nil {
 		os.Exit(1)
 	}
 }
