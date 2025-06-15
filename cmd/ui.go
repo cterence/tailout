@@ -8,13 +8,13 @@ import (
 )
 
 // uiCmd represents the UI command.
-func buildUiCommand(app *tailout.App) *cobra.Command {
+func buildUICommand(app *tailout.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Args:  cobra.ArbitraryArgs,
 		Use:   "ui",
 		Short: "Start the Tailout UI",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			err := app.UI(args)
+			err := app.UI(cmd.Context(), args)
 			if err != nil {
 				return fmt.Errorf("failed to start UI: %w", err)
 			}

@@ -18,7 +18,7 @@ func buildStopCommand(app *tailout.App) *cobra.Command {
 
 	Example : tailout stop tailout-eu-west-3-i-048afd4880f66c596`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			err := app.Stop(args)
+			err := app.Stop(cmd.Context(), args)
 			if err != nil {
 				return fmt.Errorf("failed to stop instances: %w", err)
 			}
