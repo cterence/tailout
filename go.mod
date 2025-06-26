@@ -14,7 +14,7 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
 	github.com/spf13/viper v1.20.1
-	tailscale.com v1.84.2
+	tailscale.com v1.84.3
 	tailscale.com/client/tailscale/v2 v2.0.0-20250616154411-35b8e02bd63e
 )
 
