@@ -10,7 +10,7 @@ import (
 	tsapi "tailscale.com/client/tailscale/v2"
 )
 
-func (app *App) Init() error {
+func (app *App) Init(ctx context.Context) error {
 	dryRun := app.Config.DryRun
 	nonInteractive := app.Config.NonInteractive
 
@@ -26,7 +26,7 @@ func (app *App) Init() error {
 	}
 
 	// Get the ACL configuration
-	acl, err := apiClient.PolicyFile().Get(context.TODO())
+	acl, err := apiClient.PolicyFile().Get(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get acl: %w", err)
 	}
@@ -81,7 +81,7 @@ func (app *App) Init() error {
 	}
 
 	// Validate the updated acl configuration
-	err = apiClient.PolicyFile().Validate(context.TODO(), *acl)
+	err = apiClient.PolicyFile().Validate(ctx, *acl)
 	if err != nil {
 		return fmt.Errorf("failed to validate acl: %w", err)
 	}
@@ -116,7 +116,7 @@ Your new acl document will look like this:
 			}
 		}
 
-		err = apiClient.PolicyFile().Set(context.TODO(), *acl, "")
+		err = apiClient.PolicyFile().Set(ctx, *acl, "")
 		if err != nil {
 			return fmt.Errorf("failed to update acl: %w", err)
 		}

@@ -1,6 +1,7 @@
 package tailout
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -14,7 +15,7 @@ import (
 	"github.com/a-h/templ"
 )
 
-func (app *App) UI(args []string) error {
+func (app *App) UI(ctx context.Context, args []string) error {
 	indexComponent := views.Index()
 	app.Config.NonInteractive = true
 
@@ -34,7 +35,7 @@ func (app *App) UI(args []string) error {
 	http.HandleFunc("/create", func(w http.ResponseWriter, r *http.Request) {
 		slog.Info("Creating tailout node")
 		go func() {
-			err := app.Create()
+			err := app.Create(ctx)
 			if err != nil {
 				slog.Error("failed to create node", "error", err)
 			}
@@ -46,7 +47,7 @@ func (app *App) UI(args []string) error {
 		slog.Info("Stopping tailout nodes")
 		app.Config.Stop.All = true
 		go func() {
-			err := app.Stop(nil)
+			err := app.Stop(ctx, nil)
 			if err != nil {
 				slog.Error("failed to stop nodes", "error", err)
 			}
@@ -55,7 +56,7 @@ func (app *App) UI(args []string) error {
 	})
 
 	http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
-		nodes, err := internal.GetActiveNodes(client)
+		nodes, err := internal.GetActiveNodes(ctx, client)
 		if err != nil {
 			slog.Error("failed to get active nodes", "error", err)
 			w.WriteHeader(http.StatusInternalServerError)
