@@ -55,7 +55,7 @@ jobs:
       security-events: write
     services:
       registry:
-        image: registry:3@sha256:eeb2e8ed7f4697770da1da152a9790f3af70ef82e1698d099ecc5255ad742f2c
+        image: registry:3@sha256:45fbac229389d0ee0d2ba80c92df8a2bd5896f51950b6070b6f92e8009955268
         ports:
           - 5000:5000
     needs: binary
