@@ -22,7 +22,7 @@ import (
 	tsapi "tailscale.com/client/tailscale/v2"
 )
 
-func (app *App) Create() error {
+func (app *App) Create(ctx context.Context) error {
 	nonInteractive := app.Config.NonInteractive
 	region := app.Config.Region
 	dryRun := app.Config.DryRun
@@ -47,7 +47,7 @@ func (app *App) Create() error {
 	// Create EC2 service client
 
 	if region == "" && !nonInteractive {
-		region, err = internal.SelectRegion()
+		region, err = internal.SelectRegion(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to select region: %w", err)
 		}
@@ -55,7 +55,7 @@ func (app *App) Create() error {
 		return errors.New("selected non-interactive mode but no region was explicitly specified")
 	}
 
-	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(region))
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
 	if err != nil {
 		log.Fatalf("unable to load SDK config, %v", err)
 	}
@@ -63,7 +63,7 @@ func (app *App) Create() error {
 	ec2Svc := ec2.NewFromConfig(cfg)
 
 	// DescribeImages to get the latest Amazon Linux AMI
-	amazonLinuxImages, err := ec2Svc.DescribeImages(context.TODO(), &ec2.DescribeImagesInput{
+	amazonLinuxImages, err := ec2Svc.DescribeImages(ctx, &ec2.DescribeImagesInput{
 		Filters: []types.Filter{
 			{
 				Name:   aws.String("name"),
@@ -137,7 +137,7 @@ sudo echo "sudo shutdown" | at now + ` + strconv.Itoa(durationMinutes) + ` minut
 
 	stsSvc := sts.NewFromConfig(cfg)
 
-	identity, err := stsSvc.GetCallerIdentity(context.TODO(), &sts.GetCallerIdentityInput{})
+	identity, err := stsSvc.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
 	if err != nil {
 		return fmt.Errorf("failed to get account ID: %w", err)
 	}
@@ -164,7 +164,7 @@ sudo echo "sudo shutdown" | at now + ` + strconv.Itoa(durationMinutes) + ` minut
 	}
 
 	// Run the EC2 instance
-	runResult, err := ec2Svc.RunInstances(context.TODO(), runInput)
+	runResult, err := ec2Svc.RunInstances(ctx, runInput)
 	if err != nil {
 		return fmt.Errorf("failed to create EC2 instance: %w", err)
 	}
@@ -191,7 +191,7 @@ sudo echo "sudo shutdown" | at now + ` + strconv.Itoa(durationMinutes) + ` minut
 	}
 
 	// Add the tags to the instance
-	_, err = ec2Svc.CreateTags(context.TODO(), &ec2.CreateTagsInput{
+	_, err = ec2Svc.CreateTags(ctx, &ec2.CreateTagsInput{
 		Resources: []string{*createdInstance.InstanceId},
 		Tags:      tags,
 	})
@@ -211,7 +211,7 @@ sudo echo "sudo shutdown" | at now + ` + strconv.Itoa(durationMinutes) + ` minut
 	fmt.Println("Waiting for instance to be running...")
 
 	// Add a handler for the instance state change event
-	err = ec2.NewInstanceExistsWaiter(ec2Svc).Wait(context.TODO(), &ec2.DescribeInstancesInput{
+	err = ec2.NewInstanceExistsWaiter(ec2Svc).Wait(ctx, &ec2.DescribeInstancesInput{
 		InstanceIds: []string{*createdInstance.InstanceId},
 	}, time.Minute*2)
 	if err != nil {
@@ -238,7 +238,7 @@ sudo echo "sudo shutdown" | at now + ` + strconv.Itoa(durationMinutes) + ` minut
 	}
 
 	for {
-		nodes, err := client.Devices().List(context.TODO())
+		nodes, err := client.Devices().List(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to get devices: %w", err)
 		}
@@ -268,7 +268,7 @@ found:
 		InstanceIds: []string{*createdInstance.InstanceId},
 	}
 
-	describeResult, err := ec2Svc.DescribeInstances(context.TODO(), describeInput)
+	describeResult, err := ec2Svc.DescribeInstances(ctx, describeInput)
 	if err != nil {
 		return fmt.Errorf("failed to describe EC2 instance: %w", err)
 	}
@@ -294,7 +294,7 @@ found:
 	if connect {
 		fmt.Println()
 		args := []string{nodeName}
-		err = app.Connect(args)
+		err = app.Connect(ctx, args)
 		if err != nil {
 			return fmt.Errorf("failed to connect to node: %w", err)
 		}
