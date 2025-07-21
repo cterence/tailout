@@ -15,7 +15,7 @@ require (
 	github.com/spf13/pflag v1.0.7
 	github.com/spf13/viper v1.20.1
 	tailscale.com v1.84.3
-	tailscale.com/client/tailscale/v2 v2.0.0-20250714184745-d692cd62b191
+	tailscale.com/client/tailscale/v2 v2.0.0-20250721135607-5f581daaece7
 )
 
 require (
