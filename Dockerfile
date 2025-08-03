@@ -21,7 +21,7 @@ COPY --from=generate-stage /app /app
 WORKDIR /app
 RUN CGO_ENABLED=0 GOOS=linux go build -buildvcs=false -o /app/app
 
-FROM gcr.io/distroless/base-debian12@sha256:201ef9125ff3f55fda8e0697eff0b3ce9078366503ef066653635a3ac3ed9c26 AS deploy-stage
+FROM gcr.io/distroless/base-debian12@sha256:007fbc0e0df2f12b739e9032a45ade4c58be0c9981767c440da6c404418f3144 AS deploy-stage
 WORKDIR /
 COPY --from=build-stage /app/app /app
 EXPOSE 3000
