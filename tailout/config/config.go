@@ -26,7 +26,6 @@ type CreateConfig struct {
 }
 type TailscaleConfig struct {
 	BaseURL string `mapstructure:"base_url"`
-	AuthKey string `mapstructure:"auth_key"`
 	APIKey  string `mapstructure:"api_key"`
 	Tailnet string `mapstructure:"tailnet"`
 }

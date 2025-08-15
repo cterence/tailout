@@ -3,6 +3,7 @@ package tailout
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -29,8 +30,41 @@ func (app *App) Create() error {
 	connect := app.Config.Create.Connect
 	shutdown := app.Config.Create.Shutdown
 
-	if app.Config.Tailscale.AuthKey == "" {
-		return errors.New("no tailscale auth key found")
+	baseURL, err := url.Parse(app.Config.Tailscale.BaseURL)
+	if err != nil {
+		return fmt.Errorf("failed to parse base URL: %w", err)
+	}
+
+	apiClient := &tsapi.Client{
+		APIKey:  app.Config.Tailscale.APIKey,
+		Tailnet: app.Config.Tailscale.Tailnet,
+		BaseURL: baseURL,
+	}
+
+	var keyCapabilities tsapi.KeyCapabilities
+	errUnmarshal := json.Unmarshal([]byte(`
+		{
+			"devices": {
+				"create": {
+					"reusable": false,
+					"ephemeral": true,
+					"preauthorized": true,
+					"tags": [
+						"tag:tailout"
+					]
+				}
+			}
+		}`), &keyCapabilities)
+	if errUnmarshal != nil {
+		return fmt.Errorf("failed to unmarshal key capabilities: %w", err)
+	}
+
+	key, err := apiClient.Keys().Create(context.TODO(), tsapi.CreateKeyRequest{
+		Description:  "tailout",
+		Capabilities: keyCapabilities,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create auth key: %w", err)
 	}
 
 	// TODO: add option for no shutdown
@@ -113,7 +147,7 @@ TOKEN=$(curl -sSL -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2
 INSTANCE_ID=$(curl -sSL -H "X-aws-ec2-metadata-token: ${TOKEN}" http://169.254.169.254/latest/meta-data/instance-id)
 
 curl -fsSL https://tailscale.com/install.sh | sh
-sudo tailscale up --auth-key=` + app.Config.Tailscale.AuthKey + ` --hostname=tailout-` + region + `-${INSTANCE_ID} --advertise-exit-node --ssh
+sudo tailscale up --auth-key=` + key.Key + ` --hostname=tailout-` + region + `-${INSTANCE_ID} --advertise-exit-node --ssh
 sudo echo "sudo shutdown" | at now + ` + strconv.Itoa(durationMinutes) + ` minutes`
 
 	// Encode the string in base64
@@ -226,19 +260,8 @@ sudo echo "sudo shutdown" | at now + ` + strconv.Itoa(durationMinutes) + ` minut
 
 	timeout := time.Now().Add(3 * time.Minute)
 
-	baseURL, err := url.Parse(app.Config.Tailscale.BaseURL)
-	if err != nil {
-		return fmt.Errorf("failed to parse base URL: %w", err)
-	}
-
-	client := &tsapi.Client{
-		APIKey:  app.Config.Tailscale.APIKey,
-		Tailnet: app.Config.Tailscale.Tailnet,
-		BaseURL: baseURL,
-	}
-
 	for {
-		nodes, err := client.Devices().List(context.TODO())
+		nodes, err := apiClient.Devices().List(context.TODO())
 		if err != nil {
 			return fmt.Errorf("failed to get devices: %w", err)
 		}
