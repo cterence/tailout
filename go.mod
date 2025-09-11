@@ -5,10 +5,10 @@ go 1.24.0
 require (
 	github.com/a-h/templ v0.3.943
 	github.com/adhocore/chin v1.1.0
-	github.com/aws/aws-sdk-go-v2 v1.38.3
-	github.com/aws/aws-sdk-go-v2/config v1.31.6
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.251.0
-	github.com/aws/aws-sdk-go-v2/service/sts v1.38.2
+	github.com/aws/aws-sdk-go-v2 v1.39.0
+	github.com/aws/aws-sdk-go-v2/config v1.31.8
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.251.2
+	github.com/aws/aws-sdk-go-v2/service/sts v1.38.4
 	github.com/ktr0731/go-fuzzyfinder v0.9.0
 	github.com/manifoldco/promptui v0.9.0
 	github.com/spf13/cobra v1.10.1
