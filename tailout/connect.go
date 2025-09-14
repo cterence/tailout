@@ -16,7 +16,7 @@ import (
 	"tailscale.com/tailcfg"
 )
 
-func (app *App) Connect(args []string) error {
+func (app *App) Connect(ctx context.Context, args []string) error {
 	var nodeConnect string
 
 	nonInteractive := app.Config.NonInteractive
@@ -34,7 +34,7 @@ func (app *App) Connect(args []string) error {
 
 	var deviceToConnectTo tsapi.Device
 
-	tailoutDevices, err := internal.GetActiveNodes(apiClient)
+	tailoutDevices, err := internal.GetActiveNodes(ctx, apiClient)
 	if err != nil {
 		return fmt.Errorf("failed to get active nodes: %w", err)
 	}
@@ -80,7 +80,7 @@ func (app *App) Connect(args []string) error {
 	prefs.ExitNodeID = tailcfg.StableNodeID(nodeConnect)
 	prefs.ExitNodeIP = netip.MustParseAddr(deviceToConnectTo.Addresses[0])
 
-	_, err = localClient.EditPrefs(context.TODO(), &ipn.MaskedPrefs{
+	_, err = localClient.EditPrefs(ctx, &ipn.MaskedPrefs{
 		Prefs:         *prefs,
 		ExitNodeIDSet: true,
 		ExitNodeIPSet: true,
