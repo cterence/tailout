@@ -14,7 +14,7 @@ import (
 	tsapi "tailscale.com/client/tailscale/v2"
 )
 
-func (app *App) Status() error {
+func (app *App) Status(ctx context.Context) error {
 	baseURL, err := url.Parse(app.Config.Tailscale.BaseURL)
 	if err != nil {
 		return fmt.Errorf("failed to parse base URL: %w", err)
@@ -26,13 +26,13 @@ func (app *App) Status() error {
 		BaseURL: baseURL,
 	}
 
-	nodes, err := internal.GetActiveNodes(client)
+	nodes, err := internal.GetActiveNodes(ctx, client)
 	if err != nil {
 		return fmt.Errorf("failed to get active nodes: %w", err)
 	}
 
 	var localClient tailscale.LocalClient
-	status, err := localClient.Status(context.TODO())
+	status, err := localClient.Status(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get tailscale preferences: %w", err)
 	}
@@ -61,7 +61,7 @@ func (app *App) Status() error {
 
 	// Query for the public IP address of this Node
 	httpClient := &http.Client{}
-	req, err := http.NewRequestWithContext(context.TODO(), http.MethodGet, "https://ifconfig.me/ip", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://ifconfig.me/ip", nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
