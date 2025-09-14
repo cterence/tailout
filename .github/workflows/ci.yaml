@@ -22,7 +22,6 @@ env:
   TAILOUT_TAILSCALE_API_KEY: ${{ secrets.TAILSCALE_API_KEY }}
   TAILOUT_TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
 
-
 defaults:
   run:
     shell: bash
