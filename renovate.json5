@@ -11,7 +11,8 @@
     ":gitSignOff",
     ":automergeStableNonMajor",
     ":automergeDigest",
-    ":semanticCommitsDisabled"
+    ":semanticCommitsDisabled",
+    ":skipStatusChecks",
   ],
   postUpdateOptions: [
     "gomodTidy",

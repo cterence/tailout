@@ -13,6 +13,18 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  # tailout environment variables
+  TAILOUT_REGION: eu-west-3
+  TAILOUT_NON_INTERACTIVE: "true"
+  TAILOUT_CREATE_CONNECT: "true"
+  TAILOUT_CREATE_SHUTDOWN: 5m
+  TAILOUT_TAILSCALE_TAILNET: ${{ secrets.TAILSCALE_TAILNET }}
+  TAILOUT_TAILSCALE_API_KEY: ${{ secrets.TAILSCALE_API_KEY }}
+  TAILOUT_TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
+
+defaults:
+  run:
+    shell: bash
 
 concurrency:
   group: ${{ github.ref_name }}-ci
@@ -22,28 +34,57 @@ permissions:
   contents: read
 
 jobs:
-  binary:
+  checks:
     runs-on: ubuntu-24.04
-    permissions:
-      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          fetch-depth: 0
 
       - name: Setup Golang Environment
         uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
         with:
           go-version: stable
 
+      - name: Generate templ code
+        uses: capthiron/templ-generator-action@f1f7b5d0b261eccff32fa3fc17cf563d993fee94 # v1
+        with:
+          commit: "false"
+          setup-go: "false"
+          directory: "internal/views"
+
+      - name: Check if templ code is up to date
+        run: git diff --exit-code
+
+  binary:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      id-token: write
+    needs: checks
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Setup Golang Environment
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        with:
+          go-version: stable
+
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@90a3faa9d0182683851fbfa97ca1a2cb983bfca3 # v6.2.1
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
         with:
           version: latest
           args: ${{ github.ref_type == 'tag' && 'release' || 'build --snapshot' }} --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cache Artifacts
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+        with:
+          path: ${{ github.workspace }}/dist
+          key: tailout-${{ github.run_id }}-${{ github.run_number }}
 
   build-and-push-image:
     runs-on: ubuntu-24.04
@@ -55,25 +96,25 @@ jobs:
       security-events: write
     services:
       registry:
-        image: registry:2@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
+        image: registry:3@sha256:3725021071ec9383eb3d87ddbdff9ed602439b3f7c958c9c2fb941049ea6531d
         ports:
           - 5000:5000
     needs: binary
     steps:
       - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
       - name: Setup QEMU
         uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
 
       - name: Docker Buildx
-        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
         with:
           version: latest
           driver-opts: network=host
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -82,7 +123,7 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 # v5.7.0
+        uses: docker/metadata-action@c1e51972afc2121e065aed6d45c65596fe445f3f # v5.8.0
         with:
           images: |
             name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},enable=${{ github.event_name != 'pull_request' }}
@@ -94,7 +135,7 @@ jobs:
 
       - name: Build and push Docker image
         id: push
-        uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4 # v6.15.0
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: .
           push: true
@@ -116,7 +157,7 @@ jobs:
 
       - name: Scan SBOM
         id: scan
-        uses: anchore/scan-action@7c05671ae9be166aeb155bad2d7df9121823df32 # v6.1.0
+        uses: anchore/scan-action@1638637db639e0ade3258b51db49a9a137574c3e # v6.5.1
         with:
           sbom: "sbom.json"
           only-fixed: true
@@ -124,15 +165,78 @@ jobs:
           fail-build: false
 
       - name: Upload scan result to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@6bb031afdd8eb862ea3fc1848194185e076637e5 # v3.28.11
+        uses: github/codeql-action/upload-sarif@192325c86100d080feab897ff886c34abd4c83a3 # v3.30.3
         continue-on-error: true
         with:
           sarif_file: ${{ steps.scan.outputs.sarif }}
 
       - name: Generate artifact attestation
-        uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2 # v2.2.3
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
         if: github.event_name != 'pull_request'
+
+  e2e-tests:
+    runs-on: ubuntu-24.04
+    if: ${{ github.event.repository.fork == false && github.actor != 'renovate[bot]' }}
+    needs: binary
+    permissions:
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - first_command: "tailout init"
+          - first_command: "tailout create"
+            second_command: "tailout status"
+            third_command: "tailout disconnect"
+          - first_command: "tailout create"
+            second_command: "tailout disconnect"
+            third_command: "tailout status"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup environment
+        uses: ./.github/actions/setup
+        with:
+          region: ${{ env.TAILOUT_REGION }}
+          role_arn: ${{ secrets.AWS_GITHUB_ACTIONS_TAILOUT_ROLE_ARN }}
+          tailscale_oauth_client_id: ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
+          tailscale_oauth_client_secret: ${{ secrets.TAILSCALE_OAUTH_CLIENT_SECRET }}
+      - name: First command
+        run: ${{ matrix.first_command }}
+      - name: Second command
+        if: ${{ matrix.second_command != '' }}
+        run: ${{ matrix.second_command }}
+      - name: Third command
+        if: ${{ matrix.third_command != '' }}
+        run: ${{ matrix.third_command }}
+      # TODO: check if the public IP address matches the one from the new instance
+
+  # TODO: find a better concurrency pattern
+  cleanup:
+    runs-on: ubuntu-24.04
+    if: ${{ github.event.repository.fork == false && github.actor != 'renovate[bot]' }}
+    needs: e2e-tests
+    concurrency:
+      group: cleanup
+      cancel-in-progress: true
+    permissions:
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup environment
+        uses: ./.github/actions/setup
+        with:
+          region: ${{ env.TAILOUT_REGION }}
+          role_arn: ${{ secrets.AWS_GITHUB_ACTIONS_TAILOUT_ROLE_ARN }}
+          tailscale_oauth_client_id: ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
+          tailscale_oauth_client_secret: ${{ secrets.TAILSCALE_OAUTH_CLIENT_SECRET }}
+      - name: Cleanup
+        run: tailout stop --all
+      # TODO: Add cleanup for github nodes as well

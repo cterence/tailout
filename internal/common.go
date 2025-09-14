@@ -3,7 +3,6 @@ package internal
 import (
 	"context"
 	"fmt"
-	"log"
 	"sort"
 	"time"
 
@@ -13,14 +12,14 @@ import (
 	tsapi "tailscale.com/client/tailscale/v2"
 )
 
-func GetRegions() ([]string, error) {
-	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-east-1"))
+func GetRegions(ctx context.Context) ([]string, error) {
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion("us-east-1"))
 	if err != nil {
-		log.Fatalf("unable to load SDK config, %v", err)
+		return nil, fmt.Errorf("failed to load default config: %w", err)
 	}
 	ec2Svc := ec2.NewFromConfig(cfg)
 
-	regions, err := ec2Svc.DescribeRegions(context.TODO(), &ec2.DescribeRegionsInput{})
+	regions, err := ec2Svc.DescribeRegions(ctx, &ec2.DescribeRegionsInput{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to describe regions: %w", err)
 	}
@@ -34,8 +33,8 @@ func GetRegions() ([]string, error) {
 }
 
 // Function that uses promptui to return an AWS region fetched from the aws sdk.
-func SelectRegion() (string, error) {
-	regionNames, err := GetRegions()
+func SelectRegion(ctx context.Context) (string, error) {
+	regionNames, err := GetRegions(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to retrieve regions: %w", err)
 	}
@@ -77,8 +76,8 @@ func PromptYesNo(question string) (bool, error) {
 	return false, nil
 }
 
-func GetActiveNodes(c *tsapi.Client) ([]tsapi.Device, error) {
-	devices, err := c.Devices().List(context.TODO())
+func GetActiveNodes(ctx context.Context, c *tsapi.Client) ([]tsapi.Device, error) {
+	devices, err := c.Devices().List(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get devices: %w", err)
 	}

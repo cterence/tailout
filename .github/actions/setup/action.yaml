@@ -27,27 +27,27 @@ runs:
   using: "composite"
   steps:
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4
+      uses: aws-actions/configure-aws-credentials@a03048d87541d1d9fcf2ecf528a4a65ba9bd7838 # v5
       with:
         role-to-assume: ${{ inputs.role_arn }}
         role-session-name: tailout-${{ github.job }}
         aws-region: ${{ inputs.region }}
+
     - name: Connect runner to tailscale
-      uses: tailscale/github-action@8688eb839e58e6b25c1ae96cd99d1c173299b842 # v3
+      uses: tailscale/github-action@84a3f23bb4d843bcf4da6cf824ec1be473daf4de # v3
       with:
         oauth-client-id: ${{ inputs.tailscale_oauth_client_id }}
         oauth-secret: ${{ inputs.tailscale_oauth_client_secret }}
         version: ${{ inputs.tailscale_version }}
         tags: tag:github-actions-runner
         args: --operator=runner
-    - name: Download ${{ inputs.binary_name }} binary
-      uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4
+
+    - name: Fetch Cached Artifacts
+      uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
       with:
-        name: ${{ inputs.binary_name }}
-        path: bin/
-    - name: Make ${{ inputs.binary_name }} executable
-      run: chmod +x bin/${{ inputs.binary_name }}
-      shell: bash
-    - name: Move ${{ inputs.binary_name }} to /usr/local/bin
-      run: sudo mv bin/${{ inputs.binary_name }} /usr/local/bin
+        path: ${{ github.workspace }}/dist
+        key: tailout-${{ github.run_id }}-${{ github.run_number }}
+
+    - name: Move binary to /usr/local/bin
+      run: sudo mv dist/tailout_linux_amd64*/tailout /usr/local/bin/
       shell: bash
