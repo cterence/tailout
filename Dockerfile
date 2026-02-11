@@ -1,4 +1,4 @@
-FROM golang:1.26.0@sha256:75ca321c953ce0572c709fa186cff872a510a22d6dad515291c6eb29edb9c849 as fetch-stage
+FROM golang:1.26.0@sha256:c83e68f3ebb6943a2904fa66348867d108119890a2c6a2e6f07b38d0eb6c25c5 as fetch-stage
 
 COPY go.mod go.sum /app/
 WORKDIR /app
@@ -16,7 +16,7 @@ WORKDIR /app
 EXPOSE 3000
 ENTRYPOINT ["air"]
 
-FROM golang:1.26.0@sha256:75ca321c953ce0572c709fa186cff872a510a22d6dad515291c6eb29edb9c849 AS build-stage
+FROM golang:1.26.0@sha256:c83e68f3ebb6943a2904fa66348867d108119890a2c6a2e6f07b38d0eb6c25c5 AS build-stage
 COPY --from=generate-stage /app /app
 WORKDIR /app
 RUN CGO_ENABLED=0 GOOS=linux go build -buildvcs=false -o /app/app
