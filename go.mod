@@ -1,6 +1,6 @@
 module github.com/cterence/tailout
 
-go 1.25.5
+go 1.26.0
 
 require (
 	github.com/a-h/templ v0.3.1001
@@ -14,12 +14,12 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
-	tailscale.com v1.94.2
+	tailscale.com v1.96.0
 	tailscale.com/client/tailscale/v2 v2.8.0
 )
 
 require (
-	filippo.io/edwards25519 v1.1.0 // indirect
+	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/akutz/memconn v0.1.0 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.11 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.19 // indirect
