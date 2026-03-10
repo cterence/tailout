@@ -1,6 +1,6 @@
 module github.com/cterence/tailout
 
-go 1.26.0
+go 1.26.1
 
 require (
 	github.com/a-h/templ v0.3.1001
@@ -14,7 +14,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
-	tailscale.com v1.96.0
+	tailscale.com v1.96.1
 	tailscale.com/client/tailscale/v2 v2.8.0
 )
 
