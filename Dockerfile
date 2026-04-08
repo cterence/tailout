@@ -9,7 +9,7 @@ COPY --chown=65532:65532 . /app
 WORKDIR /app
 RUN ["templ", "generate"]
 
-FROM cosmtrek/air@sha256:81acf503043fc89f20dc4db6908f06dbaac1b3ab5c37d99d0cb5f893f94e0b14 as development
+FROM cosmtrek/air@sha256:eb5060d002aae57e6d54fb0d8cd01a48c6bb7b1d3c23d4e62469b8e56a6b9c44 as development
 COPY --from=generate-stage /ko-app/templ /bin/templ
 COPY --chown=65532:65532 . /app
 WORKDIR /app
